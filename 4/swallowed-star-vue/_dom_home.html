@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+  <script type="module" src="/@vite/client"></script>
+
+  <meta charset="UTF-8">
+  <title>首页渲染验收探针</title>
+<style type="text/css" data-vite-dev-id="C:/Users/Administrator/Desktop/4/4/swallowed-star-vue/src/style.css">/* ===== 完美世界 · 登录/注册 主题样式（东方玄幻 · 仙古金 + 翠柳青 + 朱砂） ===== */
+:root{
+  --bg:#100d07;
+  --bg-2:#1c1509;
+  --panel:rgba(26,21,12,.62);
+  --panel-line:rgba(255,214,130,.20);
+  --gold:#ffe08a;
+  --gold-2:#e0a83c;
+  --cyan:#8ce8b8;   /* 翠柳青（沿用变量名，全局翠色强调） */
+  --violet:#ff9d7a; /* 朱砂（沿用变量名，全局暖色强调） */
+  --text:#fdf6e3;
+  --muted:#b3a684;
+  --danger:#ff6b81;
+  --ok:#7ee08a;
+  --radius:18px;
+  --shadow:0 24px 60px rgba(10,6,0,.55);
+  font-synthesis:none;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color:var(--text);
+  background:
+    linear-gradient(180deg, rgba(16,13,7,.46) 0%, rgba(16,13,7,.28) 45%, rgba(16,13,7,.62) 100%),
+    radial-gradient(1200px 700px at 78% -8%, rgba(140,232,184,.10), transparent 60%),
+    radial-gradient(900px 600px at 8% 110%, rgba(255,214,130,.12), transparent 60%),
+    url("/bg.jpeg") center 30% / cover no-repeat var(--bg);
+  min-height:100%;
+  overflow:hidden;
+  position:relative;
+}
+
+/* Vite 挂载点 */
+#app{position:relative;width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center}
+
+/* 背景灵光画布 */
+#starfield{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  display:block;
+}
+/* 远景灵气纹路与符文装饰 */
+.cosmos-deco{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,214,130,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,214,130,.05) 1px, transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(circle at 50% 40%, #000 30%, transparent 78%);
+}
+
+/* 主面板 */
+.panel{
+  position:relative;
+  z-index:2;
+  width:min(420px,92vw);
+  padding:30px 28px 26px;
+  border-radius:var(--radius);
+  background:var(--panel);
+  border:1px solid var(--panel-line);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:var(--shadow);
+  animation:rise .7s cubic-bezier(.2,.8,.2,1) both;
+}
+.panel::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:var(--radius);
+  padding:1px;
+  background:linear-gradient(140deg, rgba(255,224,138,.55), rgba(140,232,184,.25) 45%, rgba(224,168,60,.5));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+  opacity:.8;
+}
+@keyframes rise{from{opacity:0;transform:translateY(26px) scale(.98)}to{opacity:1;transform:none}}
+
+/* 品牌区 */
+.brand{text-align:center;margin-bottom:22px}
+.brand .sigil{
+  width:62px;height:62px;margin:0 auto 12px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 35%, rgba(255,224,138,.35), rgba(26,21,12,.9) 70%);
+  border:1px solid rgba(255,224,138,.5);
+  box-shadow:0 0 26px rgba(255,224,138,.35), inset 0 0 16px rgba(140,232,184,.25);
+}
+.brand h1{
+  font-size:25px;letter-spacing:6px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 18px rgba(255,224,138,.25);
+}
+.brand p{margin-top:6px;font-size:11.5px;letter-spacing:3px;color:var(--muted)}
+.brand p .dot{color:var(--cyan)}
+
+/* 表单 */
+.field{display:block;margin-bottom:15px}
+.field-label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:7px;letter-spacing:1px}
+.input-wrap{
+  position:relative;display:flex;align-items:center;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,214,130,.18);
+  border-radius:12px;
+  transition:border-color .25s, box-shadow .25s, background .25s;
+}
+.input-wrap:focus-within{
+  border-color:rgba(255,224,138,.65);
+  box-shadow:0 0 0 3px rgba(255,224,138,.12), 0 0 18px rgba(140,232,184,.15);
+  background:rgba(255,255,255,.06);
+}
+.input-wrap .ico{
+  flex:0 0 38px;height:44px;display:grid;place-items:center;
+  color:var(--muted);
+}
+.input-wrap .ico svg{width:18px;height:18px}
+.input-wrap input{
+  flex:1;height:44px;border:0;outline:0;background:transparent;
+  color:var(--text);font-size:14.5px;letter-spacing:.5px;
+  padding-right:38px;
+}
+.input-wrap input::placeholder{color:#7d7154}
+.eye{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  cursor:pointer;color:var(--muted);display:grid;place-items:center;
+  background:none;border:0;padding:4px;
+}
+.eye svg{width:18px;height:18px}
+
+/* 验证码 */
+.captcha-row{display:flex;gap:10px;align-items:stretch}
+.captcha-row .input-wrap{flex:1;min-width:0}
+.captcha-canvas{
+  flex:0 0 140px;height:46px;border-radius:12px;cursor:pointer;
+  /* 用 box-shadow 描边，避免 border 占用盒模型导致位图被压缩 */
+  box-shadow:0 0 0 1px rgba(255,214,130,.22);
+  transition:transform .15s, box-shadow .2s;
+}
+.captcha-canvas:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,224,138,.5)}
+.captcha-hint{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* 密码强度 */
+.strength{display:flex;gap:6px;margin-top:8px}
+.strength span{
+  flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1);
+  transition:background .3s, box-shadow .3s;
+}
+.strength[data-level="1"] span:nth-child(1){background:var(--danger);box-shadow:0 0 10px var(--danger)}
+.strength[data-level="2"] span:nth-child(-n+2){background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.strength[data-level="3"] span:nth-child(-n+3){background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.strength-tip{font-size:11px;color:var(--muted);margin-top:5px;min-height:14px}
+
+/* 记住 / 协议行 */
+.opt-row{display:flex;align-items:center;justify-content:space-between;margin:4px 0 18px;font-size:12.5px;color:var(--muted)}
+.opt-row a{color:var(--cyan);text-decoration:none}
+.opt-row a:hover{text-decoration:underline}
+.check{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.check input{display:none}
+.check .box{
+  width:16px;height:16px;border-radius:5px;border:1px solid rgba(255,214,130,.4);
+  display:grid;place-items:center;transition:.2s;
+}
+.check input:checked + .box{background:linear-gradient(135deg,var(--gold),var(--gold-2));border-color:transparent}
+.check .box svg{width:11px;height:11px;opacity:0;transition:.2s}
+.check input:checked + .box svg{opacity:1}
+
+/* 主按钮 */
+.btn-primary{
+  width:100%;height:48px;border:0;border-radius:12px;cursor:pointer;
+  font-size:15.5px;font-weight:700;letter-spacing:4px;color:#241a05;
+  background:linear-gradient(135deg,var(--gold),var(--gold-2));
+  box-shadow:0 12px 26px rgba(224,168,60,.32), inset 0 1px 0 rgba(255,255,255,.4);
+  transition:transform .15s, box-shadow .25s, filter .25s;
+  position:relative;overflow:hidden;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(224,168,60,.45)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary::after{
+  content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-20deg);animation:shine 3.4s infinite;
+}
+@keyframes shine{0%{left:-60%}55%,100%{left:130%}}
+
+/* 切换链接 */
+.switch{text-align:center;margin-top:18px;font-size:13px;color:var(--muted)}
+.switch a{color:var(--gold);text-decoration:none;font-weight:600;margin-left:4px}
+.switch a:hover{text-decoration:underline}
+
+/* 错误提示 */
+.field-error{font-size:11.5px;color:var(--danger);margin-top:6px;min-height:0;display:none}
+.field.invalid .field-error{display:block}
+.field.invalid .input-wrap{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,129,.12)}
+.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+
+/* 顶栏 */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:3;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 22px;font-size:13px;color:var(--muted);
+}
+.topbar .back{display:inline-flex;align-items:center;gap:6px;color:var(--cyan);text-decoration:none}
+.topbar .back:hover{filter:brightness(1.2)}
+
+/* toast */
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+  background:rgba(26,21,12,.92);border:1px solid var(--panel-line);
+  color:var(--text);padding:11px 18px;border-radius:12px;font-size:13px;
+  box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:9;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:rgba(126,224,138,.5)}
+.toast.err{border-color:rgba(255,107,129,.6)}
+
+/* ===== 大荒主页（导航栏 + 搜索栏 + 检索结果） ===== */
+.home-shell{
+  position:fixed;inset:0;z-index:2;overflow-y:auto;overflow-x:hidden;
+  padding:100px 18px 46px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,214,130,.25) transparent;
+}
+.home-shell::-webkit-scrollbar{width:6px}
+.home-shell::-webkit-scrollbar-thumb{background:rgba(255,214,130,.25);border-radius:3px}
+
+/* 顶部导航栏 */
+.topnav{
+  position:fixed;top:0;left:0;right:0;z-index:5;
+  display:flex;align-items:center;gap:16px;
+  height:66px;padding:0 26px;
+  background:rgba(22,17,8,.72);
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border-bottom:1px solid var(--panel-line);
+  box-shadow:0 10px 34px rgba(10,6,0,.35);
+}
+.topnav .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.topnav .logo .mark{
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 35%, rgba(255,224,138,.35), rgba(26,21,12,.9) 70%);
+  border:1px solid rgba(255,224,138,.5);
+  box-shadow:0 0 18px rgba(255,224,138,.3);
+}
+.topnav .logo b{
+  font-size:16px;letter-spacing:3px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.nav-menu{display:flex;gap:4px;margin-left:8px}
+.nav-item{
+  position:relative;padding:8px 14px;border-radius:10px;
+  font-size:13.5px;color:var(--muted);cursor:pointer;letter-spacing:1px;
+  border:0;background:transparent;user-select:none;transition:.2s;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.nav-item.active{color:var(--gold);background:rgba(255,224,138,.08)}
+.nav-item.active::after{
+  content:"";position:absolute;left:14px;right:14px;bottom:2px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--gold),var(--cyan));
+  box-shadow:0 0 8px rgba(255,224,138,.5);
+}
+.topnav .spacer{flex:1}
+.topnav .clock{font-size:12px;color:var(--muted);letter-spacing:1px;font-variant-numeric:tabular-nums}
+.nav-user{display:flex;align-items:center;gap:10px}
+.nav-user .avatar{
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font-size:15px;font-weight:700;color:#241a05;
+  background:linear-gradient(135deg,var(--gold),var(--gold-2));
+  box-shadow:0 0 14px rgba(255,224,138,.35);
+}
+.nav-user .name{font-size:13px;color:var(--text)}
+.btn-exit{
+  display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;cursor:pointer;
+  background:transparent;border:1px solid var(--panel-line);color:var(--muted);
+  font-size:12.5px;letter-spacing:1px;transition:.2s;
+}
+.btn-exit:hover{border-color:var(--danger);color:var(--danger)}
+
+/* 首屏欢迎 + 搜索栏 */
+.home-hero{
+  text-align:center;max-width:860px;margin:4vh auto 34px;
+  animation:rise .7s cubic-bezier(.2,.8,.2,1) both;
+}
+.home-hero h2{
+  font-size:30px;letter-spacing:5px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 18px rgba(255,224,138,.25);
+}
+.home-hero .sub{margin-top:10px;color:var(--muted);font-size:13.5px;letter-spacing:2px;line-height:1.9}
+.home-hero .sub b{color:var(--cyan)}
+.search-wrap{
+  display:flex;align-items:center;gap:10px;margin:26px auto 0;max-width:640px;
+  background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;
+  padding:6px 6px 6px 18px;
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:var(--shadow);
+  transition:border-color .25s, box-shadow .25s;
+}
+.search-wrap:focus-within{
+  border-color:rgba(255,224,138,.65);
+  box-shadow:0 0 0 3px rgba(255,224,138,.12), 0 0 26px rgba(140,232,184,.18);
+}
+.search-wrap .ico{display:grid;place-items:center;color:var(--muted)}
+.search-wrap .ico svg{width:19px;height:19px}
+.search-wrap input{
+  flex:1;height:44px;border:0;outline:0;background:transparent;
+  color:var(--text);font-size:14.5px;letter-spacing:.5px;
+}
+.search-wrap input::placeholder{color:#7d7154}
+.btn-search{
+  height:44px;padding:0 26px;border:0;border-radius:999px;cursor:pointer;
+  font-size:14px;font-weight:700;letter-spacing:3px;color:#241a05;
+  background:linear-gradient(135deg,var(--gold),var(--gold-2));
+  box-shadow:0 10px 22px rgba(224,168,60,.3);
+  transition:transform .15s, box-shadow .25s;
+}
+.btn-search:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(224,168,60,.42)}
+.btn-search:active{transform:translateY(0)}
+.hot-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.hot-row .tag{font-size:11px;color:var(--muted);align-self:center;letter-spacing:2px}
+.hot-chip{
+  font-size:12px;padding:6px 13px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--panel-line);background:rgba(255,255,255,.04);color:var(--muted);
+  transition:.2s;
+}
+.hot-chip:hover{color:var(--gold);border-color:rgba(255,224,138,.5)}
+
+/* 检索结果区 */
+.result-zone{max-width:1120px;margin:0 auto}
+.result-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:16px;gap:10px;flex-wrap:wrap;
+}
+.result-head h3{font-size:16px;letter-spacing:3px;color:var(--text)}
+.result-head h3 b{color:var(--gold)}
+.result-head span{font-size:12px;color:var(--muted);letter-spacing:1px}
+
+/* ===== 功法库：统计条 ===== */
+.art-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{
+  padding:14px 16px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--panel-line);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 10px 26px rgba(10,6,0,.3);
+  animation:rise .6s cubic-bezier(.2,.8,.2,1) both;
+}
+.stat-card b{
+  display:block;font-size:23px;font-weight:800;line-height:1.2;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.stat-card.jade b{background:linear-gradient(90deg,#fff,var(--cyan));-webkit-background-clip:text;background-clip:text}
+.stat-card span{display:block;margin-top:4px;font-size:11.5px;color:var(--muted);letter-spacing:1.5px}
+
+/* ===== 功法库：筛选 / 排序 ===== */
+.filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.filter-row .label{font-size:11.5px;color:var(--muted);letter-spacing:2px;margin-right:2px}
+.filter-spacer{flex:1;min-width:8px}
+.filter-chip{
+  display:inline-flex;align-items:center;
+  font-size:12.5px;padding:7px 14px;border-radius:999px;cursor:pointer;letter-spacing:1px;
+  border:1px solid var(--panel-line);background:rgba(255,255,255,.04);color:var(--muted);
+  transition:.2s;
+}
+.filter-chip:hover{color:var(--text);border-color:rgba(255,224,138,.45)}
+.filter-chip.active{
+  color:#241a05;border-color:transparent;font-weight:700;
+  background:linear-gradient(135deg,var(--gold),var(--gold-2));
+  box-shadow:0 8px 18px rgba(224,168,60,.28);
+}
+.filter-chip .cnt{margin-left:6px;font-size:11px;opacity:.75}
+
+/* ===== 功法库：卡片 ===== */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px}
+.art-card{
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  padding:18px;border-radius:16px;cursor:pointer;text-align:left;
+  background:var(--panel);border:1px solid var(--panel-line);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 10px 30px rgba(10,6,0,.35);
+  transition:transform .2s, border-color .25s, box-shadow .25s;
+  animation:rise .6s cubic-bezier(.2,.8,.2,1) both;
+}
+.art-card::after{
+  content:"";position:absolute;inset:0;border-radius:16px;pointer-events:none;
+  background:radial-gradient(260px 130px at 100% 0%, rgba(255,224,138,.12), transparent 72%);
+  opacity:0;transition:opacity .25s;
+}
+.art-card:hover{
+  transform:translateY(-4px);
+  border-color:rgba(255,224,138,.45);
+  box-shadow:0 16px 38px rgba(10,6,0,.45), 0 0 20px rgba(140,232,184,.12);
+}
+.art-card:hover::after{opacity:1}
+.art-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.art-card .glyph{
+  width:46px;height:46px;flex:0 0 46px;border-radius:13px;
+  display:grid;place-items:center;font-size:23px;
+}
+.art-title{flex:1;min-width:0;padding-right:56px}
+.art-title h4{font-size:16px;letter-spacing:1.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.art-title .tier{display:block;margin-top:4px;font-size:10.5px;letter-spacing:1px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.art-card .cat-badge{
+  position:absolute;top:14px;right:14px;
+  font-size:10.5px;padding:4px 10px;border-radius:999px;letter-spacing:1px;
+}
+.art-card .desc{font-size:12.5px;color:var(--muted);line-height:1.85;min-height:68px}
+.art-meta{
+  display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 10px;
+  margin-top:12px;padding-top:12px;border-top:1px dashed var(--panel-line);
+  font-size:11.5px;color:var(--muted);letter-spacing:.5px;
+}
+.art-meta b{color:var(--gold);font-weight:600}
+.art-card .go{margin-top:10px;font-size:12px;color:var(--cyan);letter-spacing:1px;transition:color .2s}
+.art-card:hover .go{color:var(--gold)}
+.empty-box{text-align:center;padding:60px 0;color:var(--muted);font-size:13.5px;letter-spacing:2px}
+.empty-box .big{font-size:34px;display:block;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(140,232,184,.4))}
+.retry-row{margin-top:16px}
+
+@media (max-width:760px){
+  .topnav{padding:0 14px;gap:10px}
+  .nav-menu{display:none}
+  .topnav .clock{display:none}
+  .nav-user .name{display:none}
+  .home-hero h2{font-size:24px;letter-spacing:3px}
+  .home-shell{padding-top:88px}
+  .art-card .desc{min-height:0}
+  .filter-spacer{display:none}
+}
+
+@media (max-width:480px){
+  .panel{padding:24px 18px 22px}
+  .brand h1{font-size:22px;letter-spacing:4px}
+  .captcha-row{gap:8px}
+  body{background-position:center,center,center,72% 30%}
+}
+</style></head>
+<body>
+  <div id="app" data-v-app=""><!-- ===== 顶部导航栏 ===== --><nav class="topnav"><a class="logo" href="#"><span class="mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffe08a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"></circle><path d="M12 2v1.4M7.4 4.4l1 1M16.6 4.4l-1 1M5 20h14M6.5 20c0-4 2.4-7 5.5-7s5.5 3 5.5 7"></path><path d="M12 17v3"></path></svg></span><b>完美世界</b></a><div class="nav-menu"><button class="nav-item active">功法首页</button><button class="nav-item">十凶宝术</button><button class="nav-item">剑诀秘藏</button><button class="nav-item">至尊骨术</button><button class="nav-item">修行问道</button></div><span class="spacer"></span><span class="clock">2026.10.16 16:42:40</span><div class="nav-user"><span class="avatar">完</span><span class="name">完美世界</span><button class="btn-exit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg> 退出 </button></div></nav><!-- ===== 首页主体（可滚动） ===== --><main class="home-shell"><!-- 首屏：欢迎 + 搜索栏 --><section class="home-hero"><h2>欢迎归来，完美世界</h2><p class="sub">大荒功法库 · 收录 <b>真解</b>、<b>十凶宝术</b>、<b>至尊骨术</b> 等典籍 · 检索参悟，续你的道途</p><div class="search-wrap"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></span><input type="text" placeholder="搜索 功法 / 宝术 / 剑诀 / 传承 / 修习者 …" maxlength="40"><button class="btn-search">检 索</button></div><div class="hot-row"><span class="tag">热门典籍</span><button class="hot-chip">原始真解</button><button class="hot-chip">以身为种</button><button class="hot-chip">六道轮回天功</button><button class="hot-chip">鲲鹏宝术</button><button class="hot-chip">雷帝宝术</button><button class="hot-chip">草字剑诀</button></div></section><!-- 功法库内容 --><section class="result-zone"><!-- 统计条 --><div class="art-stats"><div class="stat-card"><b>29</b><span>收录功法典籍</span></div><div class="stat-card"><b>8</b><span>修行根本功法</span></div><div class="stat-card jade"><b>10</b><span>十凶 / 雷道宝术</span></div><div class="stat-card"><b>4</b><span>至尊骨术</span></div></div><!-- 一级分类筛选 --><div class="filter-row"><span class="label">类别</span><button class="filter-chip active">全部<span class="cnt">29</span></button><button class="filter-chip">功法<span class="cnt">8</span></button><button class="filter-chip">宝术<span class="cnt">10</span></button><button class="filter-chip">至尊术<span class="cnt">4</span></button><button class="filter-chip">剑诀<span class="cnt">1</span></button><button class="filter-chip">秘法<span class="cnt">4</span></button><button class="filter-chip">身法<span class="cnt">2</span></button><span class="filter-spacer"></span><span class="label">排序</span><button class="filter-chip active">默认</button><button class="filter-chip">按品阶</button><button class="filter-chip">按名称</button></div><!-- 品阶分级筛选 --><div class="filter-row"><span class="label">品阶</span><button class="filter-chip active">全部<span class="cnt">29</span></button><button class="filter-chip">绝世<span class="cnt">5</span></button><button class="filter-chip">绝顶<span class="cnt">9</span></button><button class="filter-chip">一流<span class="cnt">5</span></button><button class="filter-chip">上乘<span class="cnt">5</span></button><button class="filter-chip">中乘<span class="cnt">5</span></button></div><!-- 列表头 --><div class="result-head"><h3>功法典籍总览 · 共 <b>29</b> 部</h3><span>数据来源 · 后端功法库</span></div><!-- 功法卡片 --><div class="card-grid"><article class="art-card" style="animation-delay: 0s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">📜</div><div class="art-title"><h4>原始真解</h4><span class="tier">万法之基 · 神引 / 超脱 / 终极三篇</span></div></div><p class="desc">不讲宝术、只讲骨文之道的无上真解，号称“万法匆匆过，唯有原始最真”。柳神自上界逃亡下界时随身携带神引篇，后赠予石昊，成为其修行的根本。</p><div class="art-meta"><span>传承 · <b>尸骸仙帝所留</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.04s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">🌱</div><div class="art-title"><h4>以身为种</h4><span class="tier">石昊独创 · 末法道途</span></div></div><p class="desc">不循天地大道，反以己身为天地，开辟轮海、道宫、四极、化龙、仙台五大秘境；正是这条路，让他在末法时代仍能独自超脱。</p><div class="art-meta"><span>传承 · <b>石昊自创</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.08s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">☯</div><div class="art-title"><h4>六道轮回天功</h4><span class="tier">至尊殿堂镇教传承</span></div></div><p class="desc">驾驭宝术的无上古天功，可同时催动六种绝世神通，一击“照亮永恒”，是石昊后期最凌厉的爆发手段。</p><div class="art-meta"><span>传承 · <b>至尊殿堂</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.12s;"><span class="cat-badge" style="color: rgb(201, 163, 255); border: 1px solid rgba(201, 163, 255, 0.267); background: rgba(201, 163, 255, 0.08);">至尊术</span><div class="art-top"><div class="glyph" style="color: rgb(201, 163, 255); background: rgba(201, 163, 255, 0.094); border: 1px solid rgba(201, 163, 255, 0.2); box-shadow: rgba(201, 163, 255, 0.133) 0px 0px 16px;">🌌</div><div class="art-title"><h4>上苍之手</h4><span class="tier">天生至尊术 · 劫罚之极</span></div></div><p class="desc">至尊骨上孕育的天生宝术，残缺时名“上苍劫光”，号称世间最可怕的劫罚；后借飞仙石之力重新领悟完整形态。</p><div class="art-meta"><span>传承 · <b>石昊至尊骨</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.16s;"><span class="cat-badge" style="color: rgb(201, 163, 255); border: 1px solid rgba(201, 163, 255, 0.267); background: rgba(201, 163, 255, 0.08);">至尊术</span><div class="art-top"><div class="glyph" style="color: rgb(201, 163, 255); background: rgba(201, 163, 255, 0.094); border: 1px solid rgba(201, 163, 255, 0.2); box-shadow: rgba(201, 163, 255, 0.133) 0px 0px 16px;">☸</div><div class="art-title"><h4>轮回</h4><span class="tier">天生至尊术 · 时光秘力</span></div></div><p class="desc">涅槃后新生至尊骨所载之术，掌控时光秘力，可留肉身记忆、附时光碎片；石昊下界身死时，自斩此骨赠予弟弟秦昊。</p><div class="art-meta"><span>传承 · <b>第二块至尊骨</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.2s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">🐒</div><div class="art-title"><h4>八九天功</h4><span class="tier">混世魔猿族古经</span></div></div><p class="desc">含七十二变与三头六臂之术，威力不弱于十凶宝术；此功唯有在厮杀中才能变强，为石昊纵横九天十地打下根基。</p><div class="art-meta"><span>传承 · <b>混世魔猿族 · 禁区之主</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.24s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🐟</div><div class="art-title"><h4>鲲鹏宝术</h4><span class="tier">太古十凶之鲲鹏传承</span></div></div><p class="desc">于化魔洞习得完整传承，掌阴阳衍变——大海无量、太阳拳、十万神羽化剑炉，皆为鲲鹏一脉的极致神通。</p><div class="art-meta"><span>传承 · <b>十凶 · 鲲鹏</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.28s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">⚡</div><div class="art-title"><h4>雷帝宝术</h4><span class="tier">雷道之巅 · 上苍劫光</span></div></div><p class="desc">汇雷道四绝天，掌雷霆本源之力，可引天劫炼体，衍化上苍劫光与雷帝指，是石昊雷道神通的巅峰。</p><div class="art-meta"><span>传承 · <b>雷帝传承 · 融狻猊法</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.32s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🐲</div><div class="art-title"><h4>真龙宝术</h4><span class="tier">太古十凶之真龙传承</span></div></div><p class="desc">十凶之一的真龙传承，含真龙爪、龙吟术等绝学——爪可裂空、吟可镇魂，是肉身搏杀一道的极致宝术。</p><div class="art-meta"><span>传承 · <b>十凶 · 真龙</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.36s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🦅</div><div class="art-title"><h4>真凰宝术</h4><span class="tier">太古十凶之真凰传承</span></div></div><p class="desc">凤翔九天、浴火不灭；以六道轮回天功催动时，可与鲲鹏、雷帝之宝术同时爆发，威势足以照亮永恒。</p><div class="art-meta"><span>传承 · <b>十凶 · 真凰</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.4s;"><span class="cat-badge" style="color: rgb(201, 163, 255); border: 1px solid rgba(201, 163, 255, 0.267); background: rgba(201, 163, 255, 0.08);">至尊术</span><div class="art-top"><div class="glyph" style="color: rgb(201, 163, 255); background: rgba(201, 163, 255, 0.094); border: 1px solid rgba(201, 163, 255, 0.2); box-shadow: rgba(201, 163, 255, 0.133) 0px 0px 16px;">✴</div><div class="art-title"><h4>第三至尊术</h4><span class="tier">无名骨文 · 增幅之秘</span></div></div><p class="desc">两块至尊骨被夺后孕育出的无名骨文，可增幅法力、速度与神通，精气神暴涨、战力层层叠加，至仙王绝巅方被彻底参透。</p><div class="art-meta"><span>传承 · <b>两失至尊骨后新生</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.44s;"><span class="cat-badge" style="color: rgb(201, 163, 255); border: 1px solid rgba(201, 163, 255, 0.267); background: rgba(201, 163, 255, 0.08);">至尊术</span><div class="art-top"><div class="glyph" style="color: rgb(201, 163, 255); background: rgba(201, 163, 255, 0.094); border: 1px solid rgba(201, 163, 255, 0.2); box-shadow: rgba(201, 163, 255, 0.133) 0px 0px 16px;">🌠</div><div class="art-title"><h4>上苍劫光</h4><span class="tier">残缺至尊术 · 天降神光</span></div></div><p class="desc">上苍之手的残缺形态，号称世间最可怕的劫罚；天降神光可破灭万物，斩诸天强者于无形。</p><div class="art-meta"><span>传承 · <b>至尊骨（残缺形态）</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.48s;"><span class="cat-badge" style="color: rgb(140, 232, 184); border: 1px solid rgba(140, 232, 184, 0.267); background: rgba(140, 232, 184, 0.08);">秘法</span><div class="art-top"><div class="glyph" style="color: rgb(140, 232, 184); background: rgba(140, 232, 184, 0.094); border: 1px solid rgba(140, 232, 184, 0.2); box-shadow: rgba(140, 232, 184, 0.133) 0px 0px 16px;">🌳</div><div class="art-title"><h4>柳神法</h4><span class="tier">柳神古法 · 涅槃新术</span></div></div><p class="desc">古法与柳神涅槃后所创新术相合，柔中藏刚、生机无尽，柳枝垂落之处万物回春，亦可绞杀神魔。</p><div class="art-meta"><span>传承 · <b>石村祭灵 · 柳神</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.52s;"><span class="cat-badge" style="color: rgb(140, 232, 184); border: 1px solid rgba(140, 232, 184, 0.267); background: rgba(140, 232, 184, 0.08);">秘法</span><div class="art-top"><div class="glyph" style="color: rgb(140, 232, 184); background: rgba(140, 232, 184, 0.094); border: 1px solid rgba(140, 232, 184, 0.2); box-shadow: rgba(140, 232, 184, 0.133) 0px 0px 16px;">🗺</div><div class="art-title"><h4>万灵图（战神图录）</h4><span class="tier">原始真解 · 上卷所载</span></div></div><p class="desc">以万灵之形铭刻符文，万灵图入体可演化列阵之道；石昊在铭纹、列阵两境皆以此稳固道基，化神曦为道符。</p><div class="art-meta"><span>传承 · <b>原始真解上卷</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.56s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">⏳</div><div class="art-title"><h4>轮回宝术</h4><span class="tier">肉身记忆 · 附时光碎片</span></div></div><p class="desc">以轮回之术封存肉身记忆，出手时附带时光碎片，令对手如坠旧梦、招架不及，与至尊骨上的“轮回”互为表里。</p><div class="art-meta"><span>传承 · <b>石昊自悟</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.6s;"><span class="cat-badge" style="color: rgb(159, 216, 255); border: 1px solid rgba(159, 216, 255, 0.267); background: rgba(159, 216, 255, 0.08);">剑诀</span><div class="art-top"><div class="glyph" style="color: rgb(159, 216, 255); background: rgba(159, 216, 255, 0.094); border: 1px solid rgba(159, 216, 255, 0.2); box-shadow: rgba(159, 216, 255, 0.133) 0px 0px 16px;">🌿</div><div class="art-title"><h4>草字剑诀</h4><span class="tier">十凶九叶剑草 · 三大剑诀之一</span></div></div><p class="desc">讲究“一株草”之意，剑气冲霄；成剑可化九片剑叶斩裂虚空，剑光过处，星辰崩碎。</p><div class="art-meta"><span>传承 · <b>十凶 · 九叶剑草</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.64s;"><span class="cat-badge" style="color: rgb(140, 232, 184); border: 1px solid rgba(140, 232, 184, 0.267); background: rgba(140, 232, 184, 0.08);">秘法</span><div class="art-top"><div class="glyph" style="color: rgb(140, 232, 184); background: rgba(140, 232, 184, 0.094); border: 1px solid rgba(140, 232, 184, 0.2); box-shadow: rgba(140, 232, 184, 0.133) 0px 0px 16px;">🛡</div><div class="art-title"><h4>法力免疫</h4><span class="tier">以身为种的衍化</span></div></div><p class="desc">修至深处可免疫诸般法术攻伐，唯有肉身搏杀方能伤及根本，是他越级挑战诸天强者的底牌之一。</p><div class="art-meta"><span>传承 · <b>石昊 · 以身为种一路</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.68s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🔥</div><div class="art-title"><h4>太古朱雀四击</h4><span class="tier">太古朱雀 · 火道绝学</span></div></div><p class="desc">一式强过一式，四击叠出可焚尽山河；石昊以此在火道上与朱雀一脉的强者争锋，也为火道诸法的根基。</p><div class="art-meta"><span>传承 · <b>太古朱雀传承</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.72s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🐢</div><div class="art-title"><h4>玄龟宝术</h4><span class="tier">太古玄龟 · 守御传承</span></div></div><p class="desc">主守御与血气的太古宝术，龟甲符文可卸力万钧；配合肉身横炼，纵被围攻亦难破其防。</p><div class="art-meta"><span>传承 · <b>太古凶兽 · 玄龟</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.76s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🦧</div><div class="art-title"><h4>朱厌宝术</h4><span class="tier">残缺传承 · 与八九天功同源</span></div></div><p class="desc">所习虽为残缺传承，却已含三头六臂与七十二变两个方向，与八九天功同源；助石昊在近身厮杀中变化无穷。</p><div class="art-meta"><span>传承 · <b>朱厌一族</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.8s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🦁</div><div class="art-title"><h4>狻猊宝术</h4><span class="tier">雷道化生 · 雷道之始</span></div></div><p class="desc">于补天阁悟得“雷道化生”之妙，是石昊雷道之路的起点，也为日后融合雷道四绝天、成就雷帝宝术铺路。</p><div class="art-meta"><span>传承 · <b>补天阁</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.84s;"><span class="cat-badge" style="color: rgb(255, 157, 122); border: 1px solid rgba(255, 157, 122, 0.267); background: rgba(255, 157, 122, 0.08);">宝术</span><div class="art-top"><div class="glyph" style="color: rgb(255, 157, 122); background: rgba(255, 157, 122, 0.094); border: 1px solid rgba(255, 157, 122, 0.2); box-shadow: rgba(255, 157, 122, 0.133) 0px 0px 16px;">🌩</div><div class="art-title"><h4>雷天雀宝术</h4><span class="tier">雷道飞禽 · 驭雷而行</span></div></div><p class="desc">化天雀之形驭雷而行，速度与雷罚并重；与狻猊宝术、雷帝术相合，令其雷道诸法愈发圆融。</p><div class="art-meta"><span>传承 · <b>雷道传承</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.88s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">🪶</div><div class="art-title"><h4>金璇波纹功</h4><span class="tier">鹏族护身法 · 三重</span></div></div><p class="desc">脱胎于金翅大鹏鸟的护体神功，共分三重、分刻于三块大鹏骨之上，能将敌人的攻势化归己用。</p><div class="art-meta"><span>传承 · <b>补天阁藏经阁</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.92s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">🎋</div><div class="art-title"><h4>五行涅槃法</h4><span class="tier">红凰一族不传之秘</span></div></div><p class="desc">以五行之力涅槃重塑己身，曾助石昊驱除绿铜锈诅咒；后与朱雀涅槃法并修，肉身涅槃再上一层。</p><div class="art-meta"><span>传承 · <b>红凰一族</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 0.96s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">📘</div><div class="art-title"><h4>伪八九天功</h4><span class="tier">齐道临自创 · 偷学百家</span></div></div><p class="desc">齐道临偷学百家之长所创的伪篇，虽不及魔猿族正版，却是石昊初入至尊道场时的重要依仗，也让他摸到了魔猿一族战斗法门的门径。</p><div class="art-meta"><span>传承 · <b>至尊道场 · 齐道临</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 1s;"><span class="cat-badge" style="color: rgb(255, 224, 138); border: 1px solid rgba(255, 224, 138, 0.267); background: rgba(255, 224, 138, 0.08);">功法</span><div class="art-top"><div class="glyph" style="color: rgb(255, 224, 138); background: rgba(255, 224, 138, 0.094); border: 1px solid rgba(255, 224, 138, 0.2); box-shadow: rgba(255, 224, 138, 0.133) 0px 0px 16px;">🐦</div><div class="art-title"><h4>朱雀涅槃法</h4><span class="tier">涅槃诸法 · 火道重生</span></div></div><p class="desc">与五行涅槃法、真凰涅槃法并称的涅槃之术，当日曾同被用于为石昊祛除绿铜锈诅咒，借火浴身、重塑肉身。</p><div class="art-meta"><span>传承 · <b>火国 · 朱雀传承</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 1.04s;"><span class="cat-badge" style="color: rgb(126, 224, 138); border: 1px solid rgba(126, 224, 138, 0.267); background: rgba(126, 224, 138, 0.08);">身法</span><div class="art-top"><div class="glyph" style="color: rgb(126, 224, 138); background: rgba(126, 224, 138, 0.094); border: 1px solid rgba(126, 224, 138, 0.2); box-shadow: rgba(126, 224, 138, 0.133) 0px 0px 16px;">🌀</div><div class="art-title"><h4>缩地成寸</h4><span class="tier">遁术 · 一步千里</span></div></div><p class="desc">土遁之术，一步跨过千里山河、遁地不见踪影，是顶级的保命身法，也为近身搏杀创造契机。</p><div class="art-meta"><span>传承 · <b>下界古法</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 1.08s;"><span class="cat-badge" style="color: rgb(140, 232, 184); border: 1px solid rgba(140, 232, 184, 0.267); background: rgba(140, 232, 184, 0.08);">秘法</span><div class="art-top"><div class="glyph" style="color: rgb(140, 232, 184); background: rgba(140, 232, 184, 0.094); border: 1px solid rgba(140, 232, 184, 0.2); box-shadow: rgba(140, 232, 184, 0.133) 0px 0px 16px;">🕯</div><div class="art-title"><h4>浴火术</h4><span class="tier">借火涅槃 · 火道秘术</span></div></div><p class="desc">以火浴身，重伤时借火元重塑肉身；与寻火法、祭火道同修，可令火道根基愈发深厚。</p><div class="art-meta"><span>传承 · <b>火道秘术</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article><article class="art-card" style="animation-delay: 1.12s;"><span class="cat-badge" style="color: rgb(126, 224, 138); border: 1px solid rgba(126, 224, 138, 0.267); background: rgba(126, 224, 138, 0.08);">身法</span><div class="art-top"><div class="glyph" style="color: rgb(126, 224, 138); background: rgba(126, 224, 138, 0.094); border: 1px solid rgba(126, 224, 138, 0.2); box-shadow: rgba(126, 224, 138, 0.133) 0px 0px 16px;">🐍</div><div class="art-title"><h4>金蛇腿</h4><span class="tier">近身腿法 · 下界流传</span></div></div><p class="desc">蛇形腿法，起落无声、变向诡谲，专攻下三路，常于缠斗中出其不意地断敌腿骨、破敌重心。</p><div class="art-meta"><span>传承 · <b>下界古法</b></span><span>修习 · <b>石昊</b></span></div><div class="go">查看典籍 →</div></article></div></section></main></div>
+  <script type="module" src="/__probe.js?t=1792140112699"></script>
+
+
+<div class="probe-log">login code=0</div><div class="probe-log">probe done</div></body></html>

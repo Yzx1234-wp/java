@@ -1,0 +1,100 @@
+/*
+ Navicat Premium Dump SQL
+
+ Source Server         : test
+ Source Server Type    : MySQL
+ Source Server Version : 80039 (8.0.39)
+ Source Host           : localhost:3306
+ Source Schema         : swallowed_star
+
+ Target Server Type    : MySQL
+ Target Server Version : 80039 (8.0.39)
+ File Encoding         : 65001
+
+ Date: 16/10/2026 16:46:44
+*/
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for gongfa
+-- ----------------------------
+DROP TABLE IF EXISTS `gongfa`;
+CREATE TABLE `gongfa`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '功法名称',
+  `cat` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '一级分类（功法/宝术/至尊术/剑诀/秘法/身法）',
+  `tier` varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '品阶/流派简述',
+  `glyph` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '卡面图标',
+  `origin` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '传承来源（对应前端 from）',
+  `owner` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '修习者',
+  `rank_score` decimal(4, 1) NOT NULL DEFAULT 0.0 COMMENT '品阶评分（「按品阶」排序用）',
+  `grade` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '中乘' COMMENT '品阶分级（绝世/绝顶/一流/上乘/中乘）',
+  `description` varchar(600) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '功法简介',
+  `is_hot` tinyint NOT NULL DEFAULT 0 COMMENT '是否热门典籍：1 是 0 否',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_name`(`name` ASC) USING BTREE,
+  INDEX `idx_cat`(`cat` ASC) USING BTREE,
+  INDEX `idx_grade`(`grade` ASC) USING BTREE,
+  INDEX `idx_rank`(`rank_score` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 59 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '大荒功法典籍表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of gongfa
+-- ----------------------------
+INSERT INTO `gongfa` VALUES (1, '原始真解', '功法', '万法之基 · 神引 / 超脱 / 终极三篇', '📜', '尸骸仙帝所留', '石昊', 10.0, '绝世', '不讲宝术、只讲骨文之道的无上真解，号称“万法匆匆过，唯有原始最真”。柳神自上界逃亡下界时随身携带神引篇，后赠予石昊，成为其修行的根本。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (2, '以身为种', '功法', '石昊独创 · 末法道途', '🌱', '石昊自创', '石昊', 10.0, '绝世', '不循天地大道，反以己身为天地，开辟轮海、道宫、四极、化龙、仙台五大秘境；正是这条路，让他在末法时代仍能独自超脱。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (3, '六道轮回天功', '功法', '至尊殿堂镇教传承', '☯', '至尊殿堂', '石昊', 9.5, '绝世', '驾驭宝术的无上古天功，可同时催动六种绝世神通，一击“照亮永恒”，是石昊后期最凌厉的爆发手段。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (4, '上苍之手', '至尊术', '天生至尊术 · 劫罚之极', '🌌', '石昊至尊骨', '石昊', 9.5, '绝世', '至尊骨上孕育的天生宝术，残缺时名“上苍劫光”，号称世间最可怕的劫罚；后借飞仙石之力重新领悟完整形态。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (5, '轮回', '至尊术', '天生至尊术 · 时光秘力', '☸', '第二块至尊骨', '石昊', 9.5, '绝世', '涅槃后新生至尊骨所载之术，掌控时光秘力，可留肉身记忆、附时光碎片；石昊下界身死时，自斩此骨赠予弟弟秦昊。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (6, '八九天功', '功法', '混世魔猿族古经', '🐒', '混世魔猿族 · 禁区之主', '石昊', 9.0, '绝顶', '含七十二变与三头六臂之术，威力不弱于十凶宝术；此功唯有在厮杀中才能变强，为石昊纵横九天十地打下根基。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (7, '鲲鹏宝术', '宝术', '太古十凶之鲲鹏传承', '🐟', '十凶 · 鲲鹏', '石昊', 9.0, '绝顶', '于化魔洞习得完整传承，掌阴阳衍变——大海无量、太阳拳、十万神羽化剑炉，皆为鲲鹏一脉的极致神通。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (8, '雷帝宝术', '宝术', '雷道之巅 · 上苍劫光', '⚡', '雷帝传承 · 融狻猊法', '石昊', 9.0, '绝顶', '汇雷道四绝天，掌雷霆本源之力，可引天劫炼体，衍化上苍劫光与雷帝指，是石昊雷道神通的巅峰。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (9, '真龙宝术', '宝术', '太古十凶之真龙传承', '🐲', '十凶 · 真龙', '石昊', 9.0, '绝顶', '十凶之一的真龙传承，含真龙爪、龙吟术等绝学——爪可裂空、吟可镇魂，是肉身搏杀一道的极致宝术。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (10, '真凰宝术', '宝术', '太古十凶之真凰传承', '🦅', '十凶 · 真凰', '石昊', 9.0, '绝顶', '凤翔九天、浴火不灭；以六道轮回天功催动时，可与鲲鹏、雷帝之宝术同时爆发，威势足以照亮永恒。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (11, '第三至尊术', '至尊术', '无名骨文 · 增幅之秘', '✴', '两失至尊骨后新生', '石昊', 9.0, '绝顶', '两块至尊骨被夺后孕育出的无名骨文，可增幅法力、速度与神通，精气神暴涨、战力层层叠加，至仙王绝巅方被彻底参透。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (12, '上苍劫光', '至尊术', '残缺至尊术 · 天降神光', '🌠', '至尊骨（残缺形态）', '石昊', 9.0, '绝顶', '上苍之手的残缺形态，号称世间最可怕的劫罚；天降神光可破灭万物，斩诸天强者于无形。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (13, '柳神法', '秘法', '柳神古法 · 涅槃新术', '🌳', '石村祭灵 · 柳神', '石昊', 9.0, '绝顶', '古法与柳神涅槃后所创新术相合，柔中藏刚、生机无尽，柳枝垂落之处万物回春，亦可绞杀神魔。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (14, '万灵图（战神图录）', '秘法', '原始真解 · 上卷所载', '🗺', '原始真解上卷', '石昊', 9.0, '绝顶', '以万灵之形铭刻符文，万灵图入体可演化列阵之道；石昊在铭纹、列阵两境皆以此稳固道基，化神曦为道符。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (15, '轮回宝术', '宝术', '肉身记忆 · 附时光碎片', '⏳', '石昊自悟', '石昊', 8.5, '一流', '以轮回之术封存肉身记忆，出手时附带时光碎片，令对手如坠旧梦、招架不及，与至尊骨上的“轮回”互为表里。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (16, '草字剑诀', '剑诀', '十凶九叶剑草 · 三大剑诀之一', '🌿', '十凶 · 九叶剑草', '石昊', 8.5, '一流', '讲究“一株草”之意，剑气冲霄；成剑可化九片剑叶斩裂虚空，剑光过处，星辰崩碎。', 1, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (17, '法力免疫', '秘法', '以身为种的衍化', '🛡', '石昊 · 以身为种一路', '石昊', 8.5, '一流', '修至深处可免疫诸般法术攻伐，唯有肉身搏杀方能伤及根本，是他越级挑战诸天强者的底牌之一。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (18, '太古朱雀四击', '宝术', '太古朱雀 · 火道绝学', '🔥', '太古朱雀传承', '石昊', 8.0, '一流', '一式强过一式，四击叠出可焚尽山河；石昊以此在火道上与朱雀一脉的强者争锋，也为火道诸法的根基。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (19, '玄龟宝术', '宝术', '太古玄龟 · 守御传承', '🐢', '太古凶兽 · 玄龟', '石昊', 8.0, '一流', '主守御与血气的太古宝术，龟甲符文可卸力万钧；配合肉身横炼，纵被围攻亦难破其防。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (20, '朱厌宝术', '宝术', '残缺传承 · 与八九天功同源', '🦧', '朱厌一族', '石昊', 7.5, '上乘', '所习虽为残缺传承，却已含三头六臂与七十二变两个方向，与八九天功同源；助石昊在近身厮杀中变化无穷。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (21, '狻猊宝术', '宝术', '雷道化生 · 雷道之始', '🦁', '补天阁', '石昊', 7.0, '上乘', '于补天阁悟得“雷道化生”之妙，是石昊雷道之路的起点，也为日后融合雷道四绝天、成就雷帝宝术铺路。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (22, '雷天雀宝术', '宝术', '雷道飞禽 · 驭雷而行', '🌩', '雷道传承', '石昊', 7.0, '上乘', '化天雀之形驭雷而行，速度与雷罚并重；与狻猊宝术、雷帝术相合，令其雷道诸法愈发圆融。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (23, '金璇波纹功', '功法', '鹏族护身法 · 三重', '🪶', '补天阁藏经阁', '石昊', 7.0, '上乘', '脱胎于金翅大鹏鸟的护体神功，共分三重、分刻于三块大鹏骨之上，能将敌人的攻势化归己用。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (24, '五行涅槃法', '功法', '红凰一族不传之秘', '🎋', '红凰一族', '石昊', 7.0, '上乘', '以五行之力涅槃重塑己身，曾助石昊驱除绿铜锈诅咒；后与朱雀涅槃法并修，肉身涅槃再上一层。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (25, '伪八九天功', '功法', '齐道临自创 · 偷学百家', '📘', '至尊道场 · 齐道临', '石昊', 6.5, '中乘', '齐道临偷学百家之长所创的伪篇，虽不及魔猿族正版，却是石昊初入至尊道场时的重要依仗，也让他摸到了魔猿一族战斗法门的门径。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (26, '朱雀涅槃法', '功法', '涅槃诸法 · 火道重生', '🐦', '火国 · 朱雀传承', '石昊', 6.5, '中乘', '与五行涅槃法、真凰涅槃法并称的涅槃之术，当日曾同被用于为石昊祛除绿铜锈诅咒，借火浴身、重塑肉身。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (27, '缩地成寸', '身法', '遁术 · 一步千里', '🌀', '下界古法', '石昊', 6.0, '中乘', '土遁之术，一步跨过千里山河、遁地不见踪影，是顶级的保命身法，也为近身搏杀创造契机。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (28, '浴火术', '秘法', '借火涅槃 · 火道秘术', '🕯', '火道秘术', '石昊', 6.0, '中乘', '以火浴身，重伤时借火元重塑肉身；与寻火法、祭火道同修，可令火道根基愈发深厚。', 0, '2026-10-16 16:39:05');
+INSERT INTO `gongfa` VALUES (29, '金蛇腿', '身法', '近身腿法 · 下界流传', '🐍', '下界古法', '石昊', 5.5, '中乘', '蛇形腿法，起落无声、变向诡谲，专攻下三路，常于缠斗中出其不意地断敌腿骨、破敌重心。', 0, '2026-10-16 16:39:05');
+
+-- ----------------------------
+-- Table structure for star_user
+-- ----------------------------
+DROP TABLE IF EXISTS `star_user`;
+CREATE TABLE `star_user`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '涓婚敭',
+  `username` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '璐﹀彿',
+  `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '瀵嗙爜锛圔Crypt 鍔犲瘑瀛樺偍锛',
+  `nickname` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '鏄电О',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '鍒涘缓鏃堕棿',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '鏄熷煙鐢ㄦ埛琛' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of star_user
+-- ----------------------------
+INSERT INTO `star_user` VALUES (1, 'admin', '$2a$10$DSBGMVbYACCQPS9x0FacROBaj1Ks0R30sh5HyxCyQwfP.yXeYlx86', '完美世界', '2026-10-16 15:29:18');
+INSERT INTO `star_user` VALUES (2, 'asd', '$2a$10$dM5.3ZkdpRTp/T4Oe0dVUebqOtAQ27YyC3LFsM91THlJn3eQ1ujr.', 'asd', '2026-10-16 15:38:14');
+INSERT INTO `star_user` VALUES (3, 'qwe', '$2a$10$49qQwCxqFXpldHPOZs8JreBdakI1jPek0ieQUtYLmPh6HPqX26q8O', 'qwe', '2026-10-16 15:46:45');
+INSERT INTO `star_user` VALUES (4, 'zxc', '$2a$10$eNc72f3ly/TXKkd7R4UOU.WbbnDbOiXPRaf6ETdly2IcdEnj5jVEy', 'zxc', '2026-10-16 15:59:57');
+INSERT INTO `star_user` VALUES (5, 'qwer', '$2a$10$YkAqDZR9BsmiVATxSEgfKeaBRqFhzw71neMG2X7K.vJmyWpozyOZi', 'qwer', '2026-10-16 16:09:10');
+
+SET FOREIGN_KEY_CHECKS = 1;
