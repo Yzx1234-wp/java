@@ -48,6 +48,16 @@
 - MySQL 客户端不在 PATH → 脚本用绝对路径。
 - node_modules / target 每次重置被删 → 脚本每次重新 install / package。
 - 若重置把 `~/.m2` 也清了，首次 `mvn package` 需联网下载依赖。
+- 2026-10-21 修复：`start` 里不要再写 `cmd /k "cd /d "%VAR%" && ..."`（引号嵌套会被 cmd 拆碎导致路径报错），
+  统一改为 `start "标题" /d "%VAR%" cmd /k "命令"`，已实测前后端窗口工作目录正确。
+  同时把 Maven 备选探测从 `FOR /D ... ("路径 通配符")`（带引号不展开）改为 `FOR /F` + `dir /b /ad`。
+- 2026-10-21 第二处修复（真凶）：`swallowed-star-vue/node_modules` 可能是**空壳目录**——
+  只有 108 个空文件夹、总大小 188K、没有 `.bin\vite.cmd`，`vite/` 里连 `bin` 都没有。
+  此时 `npm run dev` 直接报找不到 vite。判定方式：看 `node_modules\.bin\vite.cmd` 是否存在，
+  不要只看 `node_modules` 目录是否存在。已用 `npm ci` 重装（135 包，约 2 分钟，现 69M）。
+- 2026-10-21 第三处修复：`IF (...)` 块内的 `echo` **不能出现半角括号**，否则报「此时不应有 ...」，
+  需改成中文括号或去掉。
+- 已把固定 `timeout /t 10` 换成轮询 8081 端口（最多 60s），后端慢启动也不会误判。
 
 ## 5. 启停脚本说明
 - `start.bat`（GBK）：一键执行上面 1–5，后端/前端各开一个命令行窗口常驻。
