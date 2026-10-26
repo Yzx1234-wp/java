@@ -70,3 +70,13 @@
 - POST `/api/auth/login` `{username,password}` → token
 - POST `/api/auth/register` `{username,password}`
 - POST `/api/auth/logout`
+
+## 7. 后台管理系统（2026-10-26 新增）
+首页导航栏右侧新增「后台管理」按钮 → 跳转 `/admin/login`（仅登录、无注册，账号复用 admin/123456）。
+登录后进入 `/admin`，对首页「大荒功法库」数据（gongfa 表）做增删改查。
+- 前端（与前台会话独立，token 存 `ss_admin_token`）：
+  - `src/api/admin.js` 接口层；`src/views/admin/AdminLogin.vue` 登录页；`src/views/admin/AdminIndex.vue` 管理页
+  - 路由守卫：无 `ss_admin_token` 访问 `/admin` 会跳 `/admin/login`
+- 后端：`controller/AdminController.java`，`/api/admin/gongfa/list|POST|PUT/{id}|DELETE/{id}`，
+  全部走 Bearer token 鉴权（复用 TokenStore，未带/失效返回 401）
+- 注意：Gongfa 的 JSON 字段名为 `from / rank / desc / hot`（与首页卡片一致），前端提交表单已做映射

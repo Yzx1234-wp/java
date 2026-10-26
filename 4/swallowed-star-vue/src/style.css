@@ -280,6 +280,13 @@ body{
   box-shadow:0 0 14px rgba(255,224,138,.35);
 }
 .nav-user .name{font-size:13px;color:var(--text)}
+/* 导航栏「后台管理」按钮 */
+.btn-admin{
+  display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;cursor:pointer;
+  background:rgba(255,224,138,.08);border:1px solid rgba(255,224,138,.45);color:var(--gold);
+  font-size:12.5px;letter-spacing:1px;transition:.2s;font-family:inherit;
+}
+.btn-admin:hover{background:rgba(255,224,138,.16);box-shadow:0 0 12px rgba(255,224,138,.25)}
 .btn-exit{
   display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;cursor:pointer;
   background:transparent;border:1px solid var(--panel-line);color:var(--muted);
