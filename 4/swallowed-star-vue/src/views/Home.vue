@@ -26,6 +26,7 @@
     <div class="nav-user">
       <span class="avatar">{{ avatarChar }}</span>
       <span class="name">{{ nickname }}</span>
+      <span class="points-chip" title="查看我的主页" @click="router.push('/profile')">✦ {{ myPoints }}</span>
       <button class="btn-admin" @click="goAdmin">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -188,6 +189,7 @@ import { useRouter } from 'vue-router'
 import { getSession, fetchMe, logout } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
 import { homeApi, listApi } from '../api/gongfa.js'
+import { pointsApi } from '../api/quest.js'
 
 const router = useRouter()
 const { show } = useToast()
@@ -196,22 +198,35 @@ const { show } = useToast()
 const session = getSession()
 const nickname = ref((session && (session.nickname || session.username)) || '无名修士')
 const avatarChar = ref((nickname.value || '荒')[0])
+const myPoints = ref(0)
 const clock = ref('')
 let timer = null
 
-/* ===== 导航栏（其他页面暂不开发，点击提示建设中） ===== */
+/* ===== 导航栏（功法首页 + 人物介绍 + 秘境首页 + 任务接取 + 我的主页） ===== */
 const navs = [
   { key: 'home', label: '功法首页' },
-  { key: 'clan', label: '十凶宝术' },
-  { key: 'sword', label: '剑诀秘藏' },
-  { key: 'bone', label: '至尊骨术' },
-  { key: 'train', label: '修行问道' }
+  { key: 'characters', label: '人物介绍' },
+  { key: 'realms', label: '秘境首页' },
+  { key: 'quests', label: '任务接取' },
+  { key: 'profile', label: '我的主页' }
 ]
 const activeNav = ref('home')
 
 function onNav(item) {
-  if (item.key !== 'home') {
-    show(`「${item.label}」模块建设中…`, 'ok')
+  if (item.key === 'characters') {
+    router.push('/characters')
+    return
+  }
+  if (item.key === 'realms') {
+    router.push('/realms')
+    return
+  }
+  if (item.key === 'quests') {
+    router.push('/quests')
+    return
+  }
+  if (item.key === 'profile') {
+    router.push('/profile')
     return
   }
   scrollTop()
@@ -378,6 +393,12 @@ onMounted(async () => {
   }
   nickname.value = me.nickname || me.username || nickname.value
   avatarChar.value = (nickname.value || '荒')[0]
+
+  // 导航栏总积分（失败不致命）
+  try {
+    const res = await pointsApi()
+    myPoints.value = (res.data && res.data.points) || 0
+  } catch { myPoints.value = 0 }
 
   // 加载首页数据
   await loadHome()

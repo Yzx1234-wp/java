@@ -80,3 +80,64 @@
 - 后端：`controller/AdminController.java`，`/api/admin/gongfa/list|POST|PUT/{id}|DELETE/{id}`，
   全部走 Bearer token 鉴权（复用 TokenStore，未带/失效返回 401）
 - 注意：Gongfa 的 JSON 字段名为 `from / rank / desc / hot`（与首页卡片一致），前端提交表单已做映射
+
+## 8. 大荒人物志 · 人物介绍页（2026-10-28 新增）
+首页导航由「功法首页 / 十凶宝术 / 剑诀秘藏 / 至尊骨术 / 修行问道」精简为「功法首页 / 人物介绍」，
+原四个占位模块删除；点「人物介绍」进入 `/characters`。
+- 数据表：`world_character`（schema.sql 启动自动建表），演示人物 12 位由 data.sql `INSERT IGNORE` 幂等灌入
+- 后端：`entity/WorldCharacter.java`（JSON 字段 `rank/hot` 映射）、
+  `mapper/WorldCharacterMapper.java`、`service/CharacterService(+Impl)`、`controller/CharacterController`
+  - 接口：GET `/api/characters/list?keyword&faction&grade&sortBy`、`/factions`、`/grades`、`/hot`、`/{id}`
+  - 分级：仙帝/准仙帝/仙王/真仙/尊者；势力按首屏数据自动聚合
+- 前端：`src/views/Characters.vue`（金色玄幻风，与登录页同主题：panel 卡片 + 仙古金高亮 + 详情弹层）、
+  `src/api/character.js`；路由 `/characters` 有 `ss_token` 守卫，导航复用全局 `.topnav` 样式
+- 2026-10-28 已实测：`mvn package` 后重启 8081，人物接口全部返回正常；前端 vite 热更新后 `/characters` 200
+
+## 9. 大荒秘境录 · 秘境首页（2026-10-28 新增）
+首页导航现为「功法首页 / 人物介绍 / 秘境首页」三页互跳；点「秘境首页」进入 `/realms`。
+- 数据表：`secret_realm`（秘境主表）+ `realm_signup`（报名记录，realm_id+username 唯一限报一次），
+  schema.sql 启动自动建表，data.sql 幂等灌入 8 处演示秘境（虚神界/神灵之墓/十凶陨落之地等）
+- 后端：`entity/SecretRealm.java`（JSON 字段 `openTime/rank/desc/hot`；`signedCount/signed` 为非表字段查询时填充）、
+  `entity/RealmSignup.java`、`mapper/SecretRealmMapper` + `RealmSignupMapper`、`service/RealmService(+Impl)`、
+  `controller/RealmController`、`controller/dto/RealmSignupRequest`
+  - 接口：GET `/api/realms/list?keyword&grade&sortBy`（token 可选，带 token 返回 signed 标记）、
+    `/grades`、`/hot`、`/{id}`、GET `/my`（需登录）、POST `/signup` {realmId}（需登录，校验名额/重复）、
+    DELETE `/signup/{realmId}`（取消报名）
+  - 等级：仙帝/仙王/真仙/上古；quota=0 表示不限名额
+  - 坑：TokenStore 为 ConcurrentHashMap，`getUserId(null)` 会 NPE → controller 解析 token 前必须判空
+- 前端：`src/views/Realms.vue`（登录页同款金色玄幻风；卡片含开启时间横幅、名额进度条、报名/取消按钮、详情弹层）、
+  `src/api/realm.js`；路由 `/realms` 有 `ss_token` 守卫；Home.vue 与 Characters.vue 导航均已加「秘境首页」
+- 2026-10-28 已实测：报名→重复报名拒绝→我的报名→取消报名全链路通过；vite `/realms` 200
+
+## 10. 大荒悬赏榜 · 任务接取页（2026-10-28 新增）
+首页导航现为四页互跳：「功法首页 / 人物介绍 / 秘境首页 / 任务接取」；点「任务接取」进入 `/quests`。
+- 数据表：`quest`（悬赏主表，grade 等级 + points 积分，等级越高积分越多）
+  + `quest_accept`（接取记录，quest_id+username 唯一限接一次，points 留档），
+  schema.sql 启动自动建表，data.sql 幂等灌入 10 项演示任务
+- 后端：`entity/Quest.java`（JSON 字段 `desc/hot`；`acceptedCount/accepted` 非表字段查询时填充）、
+  `entity/QuestAccept.java`、`mapper/QuestMapper` + `QuestAcceptMapper`（含 `sumPoints` 求总积分）、
+  `service/QuestService(+Impl)`、`controller/QuestController`、`controller/dto/QuestAcceptRequest`
+  - 接口：GET `/api/quests/list?keyword&grade&sortBy`（token 可选，带 token 返回 accepted 标记）、
+    `/grades`、`/hot`、`/{id}`、GET `/points`（我的总积分，需登录）、GET `/my`（我的接取，需登录）、
+    POST `/accept` {questId}（需登录，接取即发积分、防重复）
+  - 等级与积分：仙帝 1000 / 仙王 600 / 真仙 300 / 上古 100（积分存表，排序按积分递降）
+- 前端：`src/views/Quests.vue`（登录页同款金色玄幻风；积分高亮、导航栏积分徽章、统计条、
+  接取按钮+详情弹层，已接取变翠色）+ `src/api/quest.js`；路由 `/quests` 有 `ss_token` 守卫；
+  Home.vue / Characters.vue / Realms.vue 导航均已加「任务接取」
+- 2026-10-28 已实测：接取仙帝级 +1000 → 接取上古级 +100（总 1100）→ 重复接取拒绝 →
+  我的积分/接取记录正确；未登录浏览正常（token 判空已吸取 realms 模块 NPE 教训）；vite `/quests` 200
+
+## 11. 我的主页 · 修士名帖（2026-10-28 新增）
+首页导航现为五页互跳：「功法首页 / 人物介绍 / 秘境首页 / 任务接取 / 我的主页」；点「我的主页」进入 `/profile`。
+- **不新建表**：全部由 star_user + quest_accept + realm_signup + quest + secret_realm 聚合而来
+- 后端：`controller/dto/ProfileVO.java`（summary 聚合 VO：账号/总积分/境界/成就/动态）、
+  `service/ProfileService(+Impl)`、`controller/ProfileController`
+  - 接口（全部需登录，未登录 401）：GET `/api/profile/summary`（总览：总积分、任务/秘境数、
+    修炼境界 tier（凡人→搬血→…→仙帝共 17 阶，按总积分定位并给进度）、8 枚成就徽章 badges、
+    修炼动态 activities（任务+秘境合并时间线最近 12 条））、GET `/quests`（我的任务明细含接取时间与留档积分）、
+    GET `/realms`（我的秘境明细含报名时间与开启时间）
+- 前端：`src/views/Profile.vue`（登录页同款金色玄幻风；名帖卡+统计条+境界进度条+成就徽章墙
+  （未点亮灰显）+ 任务/秘境/动态三页签列表）+ `src/api/profile.js`；路由 `/profile` 有 `ss_token` 守卫；
+  Home/Characters/Realms/Quests 四页导航均已加「我的主页」
+- 2026-10-28 已实测：summary 返回总积分 1100 / 铭纹境 66.7% / 4 枚徽章点亮；报名秘境后
+  动态时间线正确合并；未登录 401；vite `/profile` 200

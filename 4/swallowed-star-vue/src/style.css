@@ -280,6 +280,14 @@ body{
   box-shadow:0 0 14px rgba(255,224,138,.35);
 }
 .nav-user .name{font-size:13px;color:var(--text)}
+/* 导航栏「我的总积分」徽章（全站统一） */
+.points-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;
+  color:var(--gold);background:rgba(255,224,138,.1);border:1px solid rgba(255,224,138,.35);
+  letter-spacing:1px;white-space:nowrap;cursor:pointer;transition:.2s;
+}
+.points-chip:hover{background:rgba(255,224,138,.18);box-shadow:0 0 12px rgba(255,224,138,.25)}
 /* 导航栏「后台管理」按钮 */
 .btn-admin{
   display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;cursor:pointer;
