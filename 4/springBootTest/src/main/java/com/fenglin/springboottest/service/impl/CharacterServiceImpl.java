@@ -107,6 +107,15 @@ public class CharacterServiceImpl extends ServiceImpl<WorldCharacterMapper, Worl
                 .stream().map(WorldCharacter::getName).toList();
     }
 
+    @Override
+    public List<WorldCharacter> ranking(int limit) {
+        int n = Math.min(Math.max(limit, 1), 50);
+        return list(Wrappers.<WorldCharacter>lambdaQuery()
+                .orderByDesc(WorldCharacter::getRankScore)
+                .orderByAsc(WorldCharacter::getId)
+                .last("LIMIT " + n));
+    }
+
     /** 「全部」/ 空 视为不筛选 */
     private boolean isActive(String v) {
         return v != null && !v.isBlank() && !ALL.equals(v.trim()) && !"all".equalsIgnoreCase(v.trim());

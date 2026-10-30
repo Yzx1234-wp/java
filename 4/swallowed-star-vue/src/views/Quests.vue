@@ -145,9 +145,9 @@
           <div class="go">查看任务详情 →</div>
           <button
             class="btn-accept"
-            :class="{ done: item.accepted }"
+            :class="{ cancel: item.accepted }"
             :disabled="acceptingId === item.id"
-            @click.stop="onAccept(item)"
+            @click.stop="item.accepted ? onCancel(item) : onAccept(item)"
           >{{ acceptText(item) }}</button>
         </div>
       </article>
@@ -196,9 +196,9 @@
 
           <button
             class="btn-accept full"
-            :class="{ done: detail.accepted }"
+            :class="{ cancel: detail.accepted }"
             :disabled="acceptingId === detail.id"
-            @click="onAccept(detail)"
+            @click="detail.accepted ? onCancel(detail) : onAccept(detail)"
           >{{ acceptText(detail) }}</button>
 
           <div class="detail-foot">—— 《大荒悬赏榜》 ——</div>
@@ -213,7 +213,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSession, fetchMe, logout } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
-import { listApi, gradesApi, hotApi, acceptApi, pointsApi } from '../api/quest.js'
+import { listApi, gradesApi, hotApi, acceptApi, cancelApi, pointsApi } from '../api/quest.js'
 
 const router = useRouter()
 const { show } = useToast()
@@ -354,18 +354,14 @@ function openCard(item) {
   detail.value = item
 }
 
-/* ===== 接取任务（接取即发积分） ===== */
+/* ===== 接取 / 取消接取任务（接取即发积分，取消同步撤销） ===== */
 function acceptText(item) {
   if (acceptingId.value === item.id) return '处理中…'
-  if (item.accepted) return '✓ 已接取'
+  if (item.accepted) return '取消接取 -' + item.points
   return '接取 +' + item.points
 }
 
 async function onAccept(item) {
-  if (item.accepted) {
-    show('该任务已在你的接取记录中', 'ok')
-    return
-  }
   acceptingId.value = item.id
   try {
     const res = await acceptApi(item.id)
@@ -377,6 +373,22 @@ async function onAccept(item) {
     show(`接取成功！「${item.name}」 +${gained} 积分`, 'ok')
   } catch (e) {
     show(e.message || '接取失败，请稍后再试', 'err')
+  } finally {
+    acceptingId.value = null
+  }
+}
+
+async function onCancel(item) {
+  acceptingId.value = item.id
+  try {
+    const res = await cancelApi(item.id)
+    const lost = (res.data && res.data.withdrawn) || 0
+    item.accepted = false
+    item.acceptedCount = Math.max(0, (item.acceptedCount || 0) - 1)
+    await loadPoints()
+    show(`已取消接取「${item.name}」，撤销 ${lost} 积分`, 'ok')
+  } catch (e) {
+    show(e.message || '取消失败，请稍后再试', 'err')
   } finally {
     acceptingId.value = null
   }
@@ -648,6 +660,15 @@ const goLogout = () => { logout(); router.push('/login') }
 .btn-accept.done{
   color:var(--cyan);background:rgba(140,232,184,.08);border:1px solid rgba(140,232,184,.4);
   box-shadow:none;
+}
+.btn-accept.cancel{
+  color:#ffb49a;background:rgba(255,157,122,.08);border:1px solid rgba(255,157,122,.42);
+  box-shadow:none;
+}
+.btn-accept.cancel:hover{
+  transform:translateY(-1px);
+  color:#ffc9b8;background:rgba(255,157,122,.16);border-color:rgba(255,157,122,.62);
+  box-shadow:0 8px 20px rgba(255,157,122,.18);
 }
 .btn-accept.full{width:100%;margin-top:14px;padding:12px;font-size:14px;letter-spacing:4px}
 

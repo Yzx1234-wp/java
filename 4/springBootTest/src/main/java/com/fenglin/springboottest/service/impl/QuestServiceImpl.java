@@ -120,6 +120,23 @@ public class QuestServiceImpl extends ServiceImpl<QuestMapper, Quest> implements
     }
 
     @Override
+    @Transactional
+    public int cancelAccept(Long questId, String username) {
+        Quest quest = getById(questId);
+        if (quest == null) {
+            throw new IllegalArgumentException("未找到该任务");
+        }
+        LambdaQueryWrapper<QuestAccept> cond = Wrappers.lambdaQuery();
+        cond.eq(QuestAccept::getQuestId, questId).eq(QuestAccept::getUsername, username);
+        QuestAccept record = acceptMapper.selectOne(cond);
+        if (record == null) {
+            throw new IllegalArgumentException("你尚未接取「" + quest.getName() + "」，无法取消");
+        }
+        acceptMapper.deleteById(record.getId());
+        return record.getPoints() == null ? 0 : record.getPoints();
+    }
+
+    @Override
     public List<Quest> myQuests(String username) {
         List<QuestAccept> mine = acceptMapper.selectList(Wrappers.<QuestAccept>lambdaQuery()
                 .eq(QuestAccept::getUsername, username)

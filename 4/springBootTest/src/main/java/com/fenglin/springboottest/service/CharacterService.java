@@ -37,4 +37,11 @@ public interface CharacterService extends IService<WorldCharacter> {
 
     /** 热门人物姓名 */
     List<String> hotWords();
+
+    /**
+     * 实力排行榜（天骄榜）：按实力评分由高到低取前 N 位。
+     *
+     * @param limit 榜单长度（1~50，越界自动收敛）
+     */
+    List<WorldCharacter> ranking(int limit);
 }

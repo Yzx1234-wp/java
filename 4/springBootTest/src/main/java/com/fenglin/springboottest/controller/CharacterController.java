@@ -59,6 +59,16 @@ public class CharacterController {
         return Result.ok(characterService.hotWords());
     }
 
+    /**
+     * 人物实力排行榜（天骄榜）
+     *
+     * @param limit 榜单长度，默认 10
+     */
+    @GetMapping("/rank")
+    public Result<List<WorldCharacter>> rank(@RequestParam(required = false, defaultValue = "10") int limit) {
+        return Result.ok(characterService.ranking(limit));
+    }
+
     /** 人物详情 */
     @GetMapping("/{id}")
     public Result<WorldCharacter> detail(@PathVariable Long id) {

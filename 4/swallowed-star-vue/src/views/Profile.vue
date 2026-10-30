@@ -225,7 +225,7 @@ const tabs = computed(() => [
 ])
 
 /* ===== 境界相关 ===== */
-const tierName = computed(() => (summary.value.tier && summary.value.tier.name) || '凡人')
+const tierName = computed(() => (summary.value.tier && summary.value.tier.name) || '搬血')
 const tierNext = computed(() => summary.value.tier || null)
 const tierProgress = computed(() => (summary.value.tier && summary.value.tier.progress) || 0)
 const remainPoints = computed(() => {
@@ -419,8 +419,9 @@ const goLogout = () => { logout(); router.push('/login') }
 }
 .col-left,.col-right{display:flex;flex-direction:column;gap:18px;min-width:0}
 
-/* 面板容器 */
+/* 面板容器（width:100% 覆盖全局 .panel 的 420px 定宽，避免压到右列） */
 .panel{
+  width:100%;
   padding:20px 20px 18px;border-radius:var(--radius);
   background:var(--panel);border:1px solid var(--panel-line);
   box-shadow:var(--shadow);

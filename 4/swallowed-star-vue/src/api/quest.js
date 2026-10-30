@@ -81,3 +81,11 @@ export function acceptApi(questId) {
     body: JSON.stringify({ questId })
   })
 }
+
+/** 取消接取（删除接取记录并撤销接取时发放的积分） */
+export function cancelApi(questId) {
+  return request('/quests/accept/' + questId, {
+    method: 'DELETE',
+    headers: authHeaders()
+  })
+}

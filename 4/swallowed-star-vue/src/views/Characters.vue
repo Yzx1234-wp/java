@@ -97,6 +97,38 @@
       </div>
     </section>
 
+    <!-- ===== 人物实力排行榜（天骄榜） ===== -->
+    <section class="rank-zone">
+      <div class="rank-head">
+        <h3>天 骄 榜</h3>
+        <span>以实力评分论座次 · 点击榜上人物可查看人物志</span>
+      </div>
+
+      <div v-if="ranking.length" class="rank-board">
+        <div
+          v-for="(item, i) in ranking"
+          :key="'rk' + (item.id || item.name)"
+          class="rank-row"
+          :class="{ top3: i < 3 }"
+          @click="openCard(item)"
+        >
+          <span class="rk-no" :class="'no-' + (i + 1)">{{ i + 1 }}</span>
+          <span class="rk-glyph" :style="glyphStyle(item)">{{ item.glyph }}</span>
+          <span class="rk-name">
+            <b>{{ item.name }}</b>
+            <i>{{ item.title }}</i>
+          </span>
+          <span class="rk-realm">{{ item.realm }}</span>
+          <span class="rk-bar-wrap" title="实力评分">
+            <span class="rk-bar" :style="barStyle(item)"></span>
+          </span>
+          <span class="rk-score">{{ (item.rank || 0).toFixed(1) }}</span>
+        </div>
+      </div>
+
+      <div v-else class="rank-empty">榜单暂无数据，请确认后端服务已启动</div>
+    </section>
+
     <!-- 列表头 -->
     <div class="result-head">
       <h3 v-if="searched">检索「<b>{{ searched }}</b>」 · 共 <b>{{ list.length }}</b> 位</h3>
@@ -190,7 +222,7 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSession, fetchMe, logout } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
-import { listApi, factionsApi, gradesApi, hotApi } from '../api/character.js'
+import { listApi, factionsApi, gradesApi, hotApi, rankApi } from '../api/character.js'
 import { pointsApi } from '../api/quest.js'
 
 const router = useRouter()
@@ -230,6 +262,7 @@ const grades = ref([{ key: ALL, label: ALL, count: 0 }])
 const hotWords = ref([])
 const list = ref([])
 const detail = ref(null)
+const ranking = ref([])
 
 /* 检索条件 */
 const keyword = ref('')
@@ -277,9 +310,21 @@ async function loadList() {
   }
 }
 
+/* 天骄榜：实力前 10（失败不致命，榜单区域自行兜底） */
+async function loadRanking() {
+  try {
+    const res = await rankApi(10)
+    ranking.value = res.data || []
+  } catch (e) {
+    console.warn('天骄榜加载失败', e)
+    ranking.value = []
+  }
+}
+
 function reload() {
   loadFilters()
   loadList()
+  loadRanking()
 }
 
 function doSearch() {
@@ -331,6 +376,13 @@ function detailBorderStyle(item) {
   return { borderColor: `${c}55`, boxShadow: `0 24px 70px rgba(10,6,0,.6), 0 0 40px ${c}22` }
 }
 
+/* 天骄榜实力条：宽度按评分比例，颜色随定位分级 */
+function barStyle(item) {
+  const c = GRADE_COLORS[item.grade] || '#b3a684'
+  const pct = Math.max(0, Math.min(100, ((item.rank || 0) / 10) * 100))
+  return { width: pct + '%', background: `linear-gradient(90deg, ${c}55, ${c})` }
+}
+
 /* 筛选 / 排序变化 → 重新向后台检索 */
 watch([searched, activeFaction, activeGrade, sortBy], () => {
   if (booted) loadList()
@@ -363,7 +415,7 @@ onMounted(async () => {
     myPoints.value = (res.data && res.data.points) || 0
   } catch { myPoints.value = 0 }
 
-  await Promise.all([loadFilters(), loadList()])
+  await Promise.all([loadFilters(), loadList(), loadRanking()])
   booted = true
 })
 onBeforeUnmount(() => clearInterval(timer))
@@ -543,6 +595,74 @@ const goLogout = () => { logout(); router.push('/login') }
 }
 .char-card:hover .go{opacity:1;transform:translateX(3px)}
 
+/* ===== 人物实力排行榜（天骄榜） ===== */
+.rank-zone{
+  max-width:1120px;margin:6px auto 22px;
+  padding:18px 20px 16px;border-radius:var(--radius);
+  background:var(--panel);border:1px solid var(--panel-line);
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+}
+.rank-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.rank-head h3{
+  font-size:18px;letter-spacing:6px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.rank-head span{font-size:12px;color:var(--muted);letter-spacing:1px}
+.rank-board{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+.rank-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:12px;cursor:pointer;
+  border:1px solid transparent;
+  transition:background .2s, border-color .2s, transform .2s;
+}
+.rank-row:hover{
+  background:rgba(255,224,138,.06);border-color:rgba(255,224,138,.25);
+  transform:translateX(3px);
+}
+.rank-row.top3{background:rgba(255,224,138,.04)}
+.rk-no{
+  width:30px;height:30px;flex:none;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;font-style:normal;
+  color:var(--muted);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,214,130,.16);
+}
+.rk-no.no-1{color:#1a1305;background:linear-gradient(135deg,#ffe08a,#e0a83c);border-color:transparent;box-shadow:0 0 14px rgba(255,224,138,.45)}
+.rk-no.no-2{color:#fff;background:linear-gradient(135deg,#cfd8e3,#8fa1b8);border-color:transparent}
+.rk-no.no-3{color:#4a2c08;background:linear-gradient(135deg,#f0b98a,#b9743c);border-color:transparent}
+.rk-glyph{
+  width:38px;height:38px;flex:none;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+}
+.rk-name{width:170px;flex:none;min-width:0}
+.rk-name b{
+  display:block;font-size:14.5px;letter-spacing:2px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rk-name i{
+  display:block;margin-top:2px;font-size:11px;font-style:normal;color:var(--muted);
+  letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rk-realm{
+  width:150px;flex:none;font-size:11.5px;color:var(--muted);letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rk-bar-wrap{
+  flex:1;height:6px;border-radius:999px;overflow:hidden;
+  background:rgba(255,255,255,.07);
+}
+.rk-bar{display:block;height:100%;border-radius:999px;transition:width .6s ease}
+.rk-score{
+  width:44px;flex:none;text-align:right;font-size:13px;font-weight:700;
+  color:var(--gold);letter-spacing:1px;
+}
+.rank-empty{
+  padding:18px 0;text-align:center;font-size:12.5px;color:var(--muted);letter-spacing:1px;
+}
+
 /* ===== 空态 / 错误 ===== */
 .empty-box{
   max-width:520px;margin:40px auto;padding:36px 20px;text-align:center;
@@ -602,5 +722,7 @@ const goLogout = () => { logout(); router.push('/login') }
   .hero-deco{font-size:44px;letter-spacing:10px}
   .char-grid{grid-template-columns:1fr}
   .filter-spacer{display:none}
+  .rank-board{grid-template-columns:1fr}
+  .rk-realm{display:none}
 }
 </style>

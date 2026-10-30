@@ -180,6 +180,35 @@
         未检索到「{{ searched }}」相关的功法典籍，试试「原始真解」「鲲鹏宝术」等关键词
       </div>
     </section>
+
+    <!-- ===== 典籍详情弹层 ===== -->
+    <transition name="fade">
+      <div v-if="detail" class="detail-mask" @click.self="detail = null">
+        <div class="detail-panel" :style="detailBorderStyle(detail)">
+          <button class="detail-close" @click="detail = null">✕</button>
+
+          <div class="detail-head">
+            <div class="glyph big" :style="glyphStyle(detail)">{{ detail.glyph }}</div>
+            <div>
+              <h3>{{ detail.name }}<span class="cat-badge inline" :style="badgeStyle(detail)">{{ detail.cat }}</span></h3>
+              <p class="detail-title">{{ detail.tier }}</p>
+            </div>
+            <span v-if="detail.hot" class="hot-flag">热门典籍</span>
+          </div>
+
+          <div class="detail-rows">
+            <div class="row"><span>典籍类别</span><b>{{ detail.cat }}</b></div>
+            <div class="row"><span>品阶分级</span><b>{{ detail.grade || '未定品阶' }}</b></div>
+            <div class="row"><span>传承来源</span><b>{{ detail.from || '传承不详' }}</b></div>
+            <div class="row"><span>修习者</span><b>{{ detail.owner || '待有缘人' }}</b></div>
+          </div>
+
+          <p class="detail-desc">{{ detail.desc }}</p>
+
+          <div class="detail-foot">—— 《大荒功法库》 ——</div>
+        </div>
+      </div>
+    </transition>
   </main>
 </template>
 
@@ -264,6 +293,7 @@ const categories = ref([{ key: ALL, label: ALL, count: 0 }])
 const grades = ref([{ key: ALL, label: ALL, count: 0 }])
 const hotWords = ref([])
 const list = ref([])
+const detail = ref(null)
 
 /* 检索条件 */
 const keyword = ref('')
@@ -355,7 +385,12 @@ function scrollToResult() {
 }
 
 function openCard(item) {
-  show(`「${item.name}」典籍详情建设中`, 'ok')
+  detail.value = item
+}
+
+function detailBorderStyle(item) {
+  const c = CAT_COLORS[item.cat] || '#b3a684'
+  return { borderColor: `${c}55`, boxShadow: `0 24px 70px rgba(10,6,0,.6), 0 0 40px ${c}22` }
 }
 
 function badgeStyle(item) {
@@ -409,3 +444,51 @@ onBeforeUnmount(() => clearInterval(timer))
 const goLogout = () => { logout(); router.push('/login') }
 const goAdmin = () => router.push(localStorage.getItem('ss_admin_token') ? '/admin' : '/admin/login')
 </script>
+
+<style scoped>
+/* ===== 典籍详情弹层（与任务/人物页弹层同风格） ===== */
+.detail-mask{
+  position:fixed;inset:0;z-index:30;
+  background:rgba(10,6,0,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.detail-panel{
+  position:relative;width:min(520px,100%);max-height:86vh;overflow-y:auto;
+  padding:28px 26px 22px;border-radius:20px;
+  background:rgba(26,21,12,.95);border:1px solid;
+  animation:panelIn .3s both;
+}
+@keyframes panelIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.detail-close{
+  position:absolute;top:12px;right:12px;width:30px;height:30px;
+  border:0;border-radius:8px;cursor:pointer;font-size:14px;
+  color:var(--muted);background:rgba(255,255,255,.05);transition:.2s;
+}
+.detail-close:hover{color:var(--gold);background:rgba(255,224,138,.12)}
+.detail-head{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.detail-head h3{
+  font-size:21px;letter-spacing:3px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.detail-title{margin-top:5px;font-size:12px;color:var(--muted);letter-spacing:1px}
+.hot-flag{
+  margin-left:auto;flex:none;
+  padding:3px 10px;border-radius:999px;font-size:11px;letter-spacing:2px;
+  color:#ff9d7a;border:1px solid rgba(255,157,122,.4);background:rgba(255,157,122,.1);
+}
+.cat-badge.inline{position:static;margin-left:10px;vertical-align:2px;font-size:11px;padding:3px 10px;border-radius:999px;letter-spacing:2px}
+.detail-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.detail-rows .row{
+  display:flex;justify-content:space-between;gap:12px;
+  padding:9px 12px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,214,130,.1);
+  font-size:13px;
+}
+.detail-rows .row span{color:var(--muted);letter-spacing:1px}
+.detail-rows .row b{color:var(--gold);font-weight:600}
+.detail-desc{font-size:13.2px;line-height:1.9;color:rgba(253,246,227,.82);letter-spacing:.5px;margin-bottom:6px}
+.detail-foot{margin-top:16px;text-align:center;font-size:11px;color:rgba(179,166,132,.6);letter-spacing:3px}
+.fade-enter-active,.fade-leave-active{transition:opacity .25s}
+.fade-enter-from,.fade-leave-to{opacity:0}
+</style>

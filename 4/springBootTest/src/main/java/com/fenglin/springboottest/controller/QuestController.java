@@ -9,6 +9,7 @@ import com.fenglin.springboottest.service.QuestService;
 import com.fenglin.springboottest.service.TokenStore;
 import com.fenglin.springboottest.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -117,6 +118,26 @@ public class QuestController {
             return Result.ok(Map.of(
                     "questId", req.getQuestId(),
                     "gained", gained,
+                    "totalPoints", questService.myPoints(username)));
+        } catch (IllegalArgumentException e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    /** 取消接取（需登录，删除接取记录并撤销接取时发放的积分） */
+    @DeleteMapping("/accept/{questId}")
+    public Result<Map<String, Object>> cancelAccept(
+            @PathVariable Long questId,
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return Result.fail(401, "请先登录后再取消接取");
+        }
+        try {
+            int withdrawn = questService.cancelAccept(questId, username);
+            return Result.ok(Map.of(
+                    "questId", questId,
+                    "withdrawn", withdrawn,
                     "totalPoints", questService.myPoints(username)));
         } catch (IllegalArgumentException e) {
             return Result.fail(e.getMessage());

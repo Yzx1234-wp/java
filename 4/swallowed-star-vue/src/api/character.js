@@ -55,6 +55,11 @@ export function hotApi() {
   return get('/characters/hot')
 }
 
+/** 人物实力排行榜（天骄榜），默认前 10 */
+export function rankApi(limit = 10) {
+  return get('/characters/rank', { limit })
+}
+
 /** 人物详情 */
 export function detailApi(id) {
   return get('/characters/' + id)

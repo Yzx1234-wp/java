@@ -35,6 +35,13 @@ public interface QuestService extends IService<Quest> {
      */
     int accept(Long questId, String username);
 
+    /**
+     * 取消接取（删除接取记录，同步撤销接取时发放的积分）。
+     *
+     * @return 被撤销的积分数
+     */
+    int cancelAccept(Long questId, String username);
+
     /** 我的接取列表 */
     List<Quest> myQuests(String username);
 

@@ -32,22 +32,23 @@ import java.util.Objects;
 @Service
 public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements ProfileService {
 
-    /** 修炼境界阶梯（《完美世界》体系，按总积分逐级解锁；等级越高积分越多） */
+    /** 修炼境界阶梯（《完美世界》标准 18 境，按总积分逐级解锁；等级越高积分越多） */
     private static final List<Map.Entry<String, Integer>> TIERS = List.of(
-            Map.entry("凡人", 0),
-            Map.entry("搬血", 100),
-            Map.entry("洞天", 300),
-            Map.entry("化灵", 600),
-            Map.entry("铭纹", 900),
-            Map.entry("列阵", 1200),
-            Map.entry("尊者", 1600),
-            Map.entry("神火", 2000),
-            Map.entry("真一", 2500),
-            Map.entry("圣祭", 3000),
-            Map.entry("天神", 3600),
-            Map.entry("虚道", 4200),
-            Map.entry("斩我", 5000),
-            Map.entry("遁一", 6000),
+            Map.entry("搬血", 0),
+            Map.entry("洞天", 100),
+            Map.entry("化灵", 300),
+            Map.entry("铭纹", 600),
+            Map.entry("列阵", 900),
+            Map.entry("尊者", 1200),
+            Map.entry("神火", 1600),
+            Map.entry("真一", 2000),
+            Map.entry("圣祭", 2500),
+            Map.entry("天神", 3000),
+            Map.entry("虚道", 3600),
+            Map.entry("斩我", 4200),
+            Map.entry("遁一", 5000),
+            Map.entry("至尊", 6000),
+            Map.entry("真仙", 7000),
             Map.entry("仙王", 8000),
             Map.entry("准仙帝", 10000),
             Map.entry("仙帝", 15000)
