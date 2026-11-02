@@ -7,7 +7,7 @@
         </svg>
       </div>
       <h1>后台管理</h1>
-      <p>PERFECT <span class="dot">·</span> WORLD <span class="dot">·</span> 大荒功法库 · 数据管理入口</p>
+      <p>PERFECT <span class="dot">·</span> WORLD <span class="dot">·</span> 大荒数据管理控制台</p>
     </header>
 
     <form @submit.prevent="submit">
@@ -38,15 +38,17 @@
 
       <button type="submit" class="btn-primary" :disabled="loading">{{ loading ? '身份核验中…' : '进 入 后 台' }}</button>
 
+      <p class="admin-hint">仅管理员账号可进入（默认 admin / 123456）；普通修士账号会被拒绝。</p>
+
       <div class="switch"><router-link to="/home">← 返回首页</router-link></div>
     </form>
   </main>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminLogin } from '../../api/admin.js'
+import { adminLogin, fetchAdminMe, getAdminToken } from '../../api/admin.js'
 import { useToast } from '../../composables/useToast.js'
 
 const router = useRouter()
@@ -56,6 +58,14 @@ const form = reactive({ username: '', password: '' })
 const showPw = ref(false)
 const loading = ref(false)
 const errors = reactive({ username: '', password: '' })
+
+onMounted(async () => {
+  if (!getAdminToken()) return
+  try {
+    await fetchAdminMe()
+    router.replace('/admin/dashboard')
+  } catch { /* 令牌失效：留在登录页 */ }
+})
 
 async function submit() {
   errors.username = ''
@@ -67,16 +77,28 @@ async function submit() {
 
   loading.value = true
   try {
-    const success = await adminLogin(form.username.trim(), form.password)
-    if (success) {
-      show('身份核验通过，正在进入后台…', 'ok')
-      setTimeout(() => router.push('/admin'), 800)
-    }
+    await adminLogin(form.username.trim(), form.password)
+    show('身份核验通过，正在进入后台…', 'ok')
+    router.push('/admin/dashboard')
   } catch (e) {
-    errors.password = '账号或密钥错误'
-    show(e.message || '账号或管理密钥不正确', 'err')
+    if (e.code === 403) {
+      errors.password = '该账号没有后台管理权限'
+      show(e.message || '该账号没有后台管理权限', 'err')
+    } else if (e.code === 401) {
+      errors.password = '登录已失效，请重试'
+      show(e.message || '登录已失效', 'err')
+    } else {
+      errors.password = '账号或密钥错误'
+      show(e.message || '账号或管理密钥不正确', 'err')
+    }
   } finally {
     loading.value = false
   }
 }
 </script>
+
+<style scoped>
+.admin-hint{
+  margin:12px 0 0;font-size:11.5px;line-height:1.7;color:var(--muted);text-align:center;
+}
+</style>

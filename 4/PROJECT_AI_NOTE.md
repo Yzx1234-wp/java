@@ -71,7 +71,7 @@
 - POST `/api/auth/register` `{username,password}`
 - POST `/api/auth/logout`
 
-## 7. 后台管理系统（2026-10-26 新增）
+## 7. 后台管理系统（2026-10-26 新增，2026-11-02 已重构为 2.0，见第 12 节）
 首页导航栏右侧新增「后台管理」按钮 → 跳转 `/admin/login`（仅登录、无注册，账号复用 admin/123456）。
 登录后进入 `/admin`，对首页「大荒功法库」数据（gongfa 表）做增删改查。
 - 前端（与前台会话独立，token 存 `ss_admin_token`）：
@@ -141,3 +141,86 @@
   Home/Characters/Realms/Quests 四页导航均已加「我的主页」
 - 2026-10-28 已实测：summary 返回总积分 1100 / 铭纹境 66.7% / 4 枚徽章点亮；报名秘境后
   动态时间线正确合并；未登录 401；vite `/profile` 200
+
+## 12. 后台管理控制台 2.0（2026-11-02 重构）
+
+原后台只有「功法管理」单页，且存在多处不可用/缺陷，本次整体重构：
+
+### 修复的原有缺陷
+- 重名新增/修改会直接 500（Spring 默认错误页）→ 新增 GlobalExceptionHandler，
+  唯一键冲突翻译成「xx名称「yy」已存在，请换一个」等友好提示
+- 品阶评分量纲错误：数据实际是 0-10，旧表单却让填 0-100 → 统一为 0-10（步进 0.1）
+- 任何注册用户拿到自己的 token 都能调 /api/admin/* → 新增 AdminGuard 管理员白名单
+  （application.properties 的 admin.allow-users，默认 admin），非管理员返回 403
+- 后台页内容超高无法滚动（body overflow:hidden）→ .adm-content 自带滚动容器
+
+### 后端新增（全部在 /api/admin/*，均需管理员 Bearer token）
+- `common/GlobalExceptionHandler`：唯一键/约束/参数/兜底异常统一翻译
+- `service/AdminGuard`：token 校验 + 管理员白名单（401/403）
+- `common/Validators`：表单校验小工具；`controller/dto/IdsRequest|PasswordRequest|AdminUserVO`
+- AdminController（功法）：list/categories/create/update/delete/batch-delete/toggle-hot，
+  新增前先查重名（409），评分 0-10 校验
+- AdminCharacterController（人物）：同上 CRUD，字段为 description（不是 desc！）
+- AdminRealmController（秘境）：CRUD + GET /{id}/signups + DELETE /signups/{signupId}，
+  删除秘境时连带清理 realm_signup
+- AdminQuestController（悬赏）：CRUD + GET /{id}/accepts + DELETE /accepts/{acceptId}，
+  删除任务时连带清理 quest_accept
+- AdminUserController（修士账号）：list（含积分/接取数/报名数聚合）、PUT /{id} 改昵称、
+  PUT /{id}/password 重置密码、DELETE /{id} 删账号（连带报名/接取记录，管理员账号禁删）
+- AdminOverviewController：GET /me（当前管理员）、GET /overview（各模块计数、
+  分类/等级分布、最近 8 条报名与接取动态）
+- Mapper 新增：RealmSignupMapper.countByUser、QuestAcceptMapper.statsByUser
+- 配置：application.properties 增加 `admin.allow-users=admin`
+
+### 前端重构（swallowed-star-vue）
+- 路由：/admin 变为布局路由（AdminLayout.vue），子路由
+  /admin/dashboard|gongfa|characters|realms|quests|users；守卫校验 ss_admin_token
+- 删除旧 AdminIndex.vue；AdminLogin.vue 登录后调 /admin/me 校验权限（非管理员 403 提示）
+- `src/api/admin.js` 重写：crud() 工厂 + isAuthError；401/403 统一跳登录页
+- 通用件：views/admin/components/{AdminTable,AdminFormModal,AdminConfirm,AdminRecordModal}.vue、
+  composables/useCrudPage.js、admin.css（adm- 前缀样式）
+- 六个页面：Dashboard（概览+分布条+动态流）、GongfaManage、CharacterManage、
+  RealmManage（含报名记录弹窗+撤销）、QuestManage（含接取记录弹窗+撤销）、
+  UserManage（改昵称/重置密码/删账号）
+- 表格支持多选批量删除、热门一键切换、排序下拉、客户端分页
+
+### 2026-11-02 已实测
+- mvn package 后重启 8081：全模块 CRUD/重名 409/校验 400/越权 403/记录撤销 全部 curl 通过
+- vite build + eslint 通过；headless Chrome 实测六个页面渲染、
+  新增→重名拦截→编辑→删除→报名记录→改昵称→退出登录 全链路 UI 通过
+- 注意：本机沙箱环境变量 SERVER__PORT 会覆盖端口，手工起后端务必带 `--server.port=8081`
+
+## 13. 人物页改版 + 人物头像（2026-11-02）
+
+### 天骄榜位置调整
+- Characters.vue 主体改为两栏 `.char-body`：左侧人物列表（minmax(0,1fr)）+ 右侧天骄榜
+  （`.rank-side` 300px，`position:sticky; top:96px`，超高自带滚动）
+- ≤1080px 时榜单折叠到列表上方（order:-1），榜单两列；≤640px 榜单单列
+- 榜单行改为紧凑两行式：名次/头像/姓名+境界/评分 一行 + 底部实力条（flex-wrap 全宽）
+
+### 人物头像
+- AI 生成了 22 张水墨/厚涂仙侠风半身头像（1024²），Python Pillow 批量裁掉底部水印、
+  居中裁方后压缩为 360² JPG，存于 `swallowed-star-vue/public/avatars/*.jpg`
+  （原始大图在 C:/WorkBuddyTmp/avatars_raw，处理脚本 C:/WorkBuddyTmp/make_avatars.py）
+- DB：world_character 新增 `avatar VARCHAR(255)`；schema.sql 已含该列；
+  老库迁移 + 22 人头像路径回填在 `config/DataInitializer.migrateCharacterAvatarColumn()`（幂等，
+  注意 data.sql 阶段执行早于 CommandLineRunner，勿把依赖新列的 UPDATE 放进 data.sql）
+- 前端：人物卡/天骄榜/详情弹层支持 `<img class="glyph img">`，无 avatar 时回退卡面图标；
+  后台人物管理表格「图标」列改为头像缩略图（.adm-avatar），表单新增「头像图片路径」字段
+- 验证：mvn 重启后 rank/list 接口返回 avatar；无头 Chrome 实测宽屏榜单在右、
+  窄屏折叠在上、32 处头像全部加载、详情弹层头像正常；vite build 通过
+
+## 14. 人物页布局微调（2026-11-02 第三次）
+- 内容区上限 1120 → 1720（题头/筛选/主体同步加宽），天骄榜贴内容区最右
+- 人物列表固定 3 列（原 auto-fill 最小 300 只能排 2 列）：≥1201px 3 列、
+  1081–1200px 2 列、≤1080px 榜单折叠到上方后恢复 3 列、≤860px 2 列、≤640px 1 列
+- 无头 Chrome 实测 1500/1920/1366/1000/700 五档宽度：均无横向滚动，
+  1500/1366 榜单右缘距视口仅 28px（≈贴边），1920 因容器上限居中余 105px
+
+## 15. 人物头像换版 · 动画风（2026-11-02 第四次）
+- 用户反馈原水墨厚涂风不符合《完美世界》动画，全部 22 张按 3D CG 国漫动画画风
+  （动画同款：石昊黑发高马尾金纹战袍、火灵儿红裙火凤、柳神绿衣柳枝等）重新生成，
+  原图存 C:/WorkBuddyTmp/avatars_anime，处理脚本 make_avatars_anime.py（按文件名时间戳映射）
+- 仍走 裁底部水印9% -> 居中裁方 -> 360px JPG 流程，原地覆盖 public/avatars/*.jpg，
+  DB avatar 路径未变、无后端改动；无头浏览器复测 32 处图片全部加载、详情弹层正常
+- 提示：浏览器可能缓存旧图，需 Ctrl+F5 强刷

@@ -14,4 +14,8 @@ public interface RealmSignupMapper extends BaseMapper<RealmSignup> {
     /** 各秘境报名人数 */
     @Select("SELECT realm_id AS realmId, COUNT(*) AS cnt FROM realm_signup GROUP BY realm_id")
     List<Map<String, Object>> countByRealm();
+
+    /** 按账号统计报名数量（后台用户列表用） */
+    @Select("SELECT username AS username, COUNT(*) AS cnt FROM realm_signup GROUP BY username")
+    List<Map<String, Object>> countByUser();
 }

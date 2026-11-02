@@ -97,93 +97,103 @@
       </div>
     </section>
 
-    <!-- ===== 人物实力排行榜（天骄榜） ===== -->
-    <section class="rank-zone">
-      <div class="rank-head">
-        <h3>天 骄 榜</h3>
-        <span>以实力评分论座次 · 点击榜上人物可查看人物志</span>
-      </div>
-
-      <div v-if="ranking.length" class="rank-board">
-        <div
-          v-for="(item, i) in ranking"
-          :key="'rk' + (item.id || item.name)"
-          class="rank-row"
-          :class="{ top3: i < 3 }"
-          @click="openCard(item)"
-        >
-          <span class="rk-no" :class="'no-' + (i + 1)">{{ i + 1 }}</span>
-          <span class="rk-glyph" :style="glyphStyle(item)">{{ item.glyph }}</span>
-          <span class="rk-name">
-            <b>{{ item.name }}</b>
-            <i>{{ item.title }}</i>
-          </span>
-          <span class="rk-realm">{{ item.realm }}</span>
-          <span class="rk-bar-wrap" title="实力评分">
-            <span class="rk-bar" :style="barStyle(item)"></span>
-          </span>
-          <span class="rk-score">{{ (item.rank || 0).toFixed(1) }}</span>
+    <!-- ===== 主体两栏：左侧人物列表 + 右侧天骄榜 ===== -->
+    <div class="char-body">
+      <div class="char-main">
+        <!-- 列表头 -->
+        <div class="result-head">
+          <h3 v-if="searched">检索「<b>{{ searched }}</b>」 · 共 <b>{{ list.length }}</b> 位</h3>
+          <h3 v-else>人物总览 · 共 <b>{{ list.length }}</b> 位</h3>
+          <span>{{ loading ? '正在翻阅人物志…' : '数据来源 · 后端人物志' }}</span>
         </div>
-      </div>
 
-      <div v-else class="rank-empty">榜单暂无数据，请确认后端服务已启动</div>
-    </section>
+        <!-- 人物卡片 -->
+        <div v-if="list.length" class="char-grid">
+          <article
+            v-for="(item, i) in list"
+            :key="item.id || item.name"
+            class="char-card"
+            :style="{ animationDelay: (i * 0.05) + 's' }"
+            @click="openCard(item)"
+          >
+            <span class="grade-badge" :style="badgeStyle(item)">{{ item.grade }}</span>
 
-    <!-- 列表头 -->
-    <div class="result-head">
-      <h3 v-if="searched">检索「<b>{{ searched }}</b>」 · 共 <b>{{ list.length }}</b> 位</h3>
-      <h3 v-else>人物总览 · 共 <b>{{ list.length }}</b> 位</h3>
-      <span>{{ loading ? '正在翻阅人物志…' : '数据来源 · 后端人物志' }}</span>
-    </div>
+            <div class="char-top">
+              <img v-if="item.avatar" class="glyph img" :src="item.avatar" :alt="item.name" :style="glyphStyle(item)">
+              <div v-else class="glyph" :style="glyphStyle(item)">{{ item.glyph }}</div>
+              <div class="char-title">
+                <h4>{{ item.name }}</h4>
+                <span class="title">{{ item.title }}</span>
+              </div>
+            </div>
 
-    <!-- 人物卡片 -->
-    <div v-if="list.length" class="char-grid">
-      <article
-        v-for="(item, i) in list"
-        :key="item.id || item.name"
-        class="char-card"
-        :style="{ animationDelay: (i * 0.05) + 's' }"
-        @click="openCard(item)"
-      >
-        <span class="grade-badge" :style="badgeStyle(item)">{{ item.grade }}</span>
+            <blockquote class="quote">「{{ item.quote }}」</blockquote>
 
-        <div class="char-top">
-          <div class="glyph" :style="glyphStyle(item)">{{ item.glyph }}</div>
-          <div class="char-title">
-            <h4>{{ item.name }}</h4>
-            <span class="title">{{ item.title }}</span>
+            <p class="desc">{{ item.description }}</p>
+
+            <div class="char-meta">
+              <span>境界 · <b>{{ item.realm }}</b></span>
+              <span>势力 · <b>{{ item.faction }}</b></span>
+            </div>
+
+            <div class="go">查看人物志 →</div>
+          </article>
+        </div>
+
+        <div v-else-if="loading" class="empty-box">
+          <span class="big">✧</span>
+          正在翻阅大荒人物志…
+        </div>
+
+        <div v-else-if="loadError" class="empty-box">
+          <span class="big">⚠</span>
+          {{ loadError }}
+          <div class="retry-row">
+            <button class="filter-chip active" @click="reload">重新加载</button>
           </div>
         </div>
 
-        <blockquote class="quote">「{{ item.quote }}」</blockquote>
-
-        <p class="desc">{{ item.description }}</p>
-
-        <div class="char-meta">
-          <span>境界 · <b>{{ item.realm }}</b></span>
-          <span>势力 · <b>{{ item.faction }}</b></span>
+        <div v-else class="empty-box">
+          <span class="big">❋</span>
+          未检索到「{{ searched }}」相关人物，试试「石昊」「柳神」等关键词
         </div>
-
-        <div class="go">查看人物志 →</div>
-      </article>
-    </div>
-
-    <div v-else-if="loading" class="empty-box">
-      <span class="big">✧</span>
-      正在翻阅大荒人物志…
-    </div>
-
-    <div v-else-if="loadError" class="empty-box">
-      <span class="big">⚠</span>
-      {{ loadError }}
-      <div class="retry-row">
-        <button class="filter-chip active" @click="reload">重新加载</button>
       </div>
-    </div>
 
-    <div v-else class="empty-box">
-      <span class="big">❋</span>
-      未检索到「{{ searched }}」相关人物，试试「石昊」「柳神」等关键词
+      <!-- ===== 人物实力排行榜（天骄榜 · 右侧栏，窄屏折叠到列表上方） ===== -->
+      <aside class="rank-side">
+        <section class="rank-zone">
+          <div class="rank-head">
+            <h3>天 骄 榜</h3>
+            <span>以实力评分论座次</span>
+          </div>
+
+          <div v-if="ranking.length" class="rank-board">
+            <div
+              v-for="(item, i) in ranking"
+              :key="'rk' + (item.id || item.name)"
+              class="rank-row"
+              :class="{ top3: i < 3 }"
+              @click="openCard(item)"
+            >
+              <span class="rk-no" :class="'no-' + (i + 1)">{{ i + 1 }}</span>
+              <img v-if="item.avatar" class="rk-glyph img" :src="item.avatar" :alt="item.name" :style="glyphStyle(item)">
+              <span v-else class="rk-glyph" :style="glyphStyle(item)">{{ item.glyph }}</span>
+              <span class="rk-name">
+                <b>{{ item.name }}</b>
+                <i>{{ item.realm }}</i>
+              </span>
+              <span class="rk-score">{{ (item.rank || 0).toFixed(1) }}</span>
+              <span class="rk-bar-wrap" title="实力评分">
+                <span class="rk-bar" :style="barStyle(item)"></span>
+              </span>
+            </div>
+          </div>
+
+          <div v-else class="rank-empty">榜单暂无数据，请确认后端服务已启动</div>
+
+          <p class="rank-tip">点击榜上人物可查看人物志</p>
+        </section>
+      </aside>
     </div>
 
     <!-- ===== 人物详情弹层 ===== -->
@@ -193,7 +203,8 @@
           <button class="detail-close" @click="detail = null">✕</button>
 
           <div class="detail-head">
-            <div class="glyph big" :style="glyphStyle(detail)">{{ detail.glyph }}</div>
+            <img v-if="detail.avatar" class="glyph big img" :src="detail.avatar" :alt="detail.name" :style="glyphStyle(detail)">
+            <div v-else class="glyph big" :style="glyphStyle(detail)">{{ detail.glyph }}</div>
             <div>
               <h3>{{ detail.name }}<span class="grade-badge inline" :style="badgeStyle(detail)">{{ detail.grade }}</span></h3>
               <p class="detail-title">{{ detail.title }}</p>
@@ -441,7 +452,7 @@ const goLogout = () => { logout(); router.push('/login') }
 
 /* ===== 首屏题头 ===== */
 .char-hero{
-  max-width:1120px;margin:0 auto 26px;text-align:center;
+  max-width:1720px;margin:0 auto 26px;text-align:center;
   padding:42px 22px 30px;
   position:relative;
 }
@@ -491,7 +502,7 @@ const goLogout = () => { logout(); router.push('/login') }
 .hot-chip:hover{background:rgba(255,224,138,.18);transform:translateY(-1px)}
 
 /* ===== 筛选区 ===== */
-.filter-zone{max-width:1120px;margin:0 auto 8px;display:flex;flex-direction:column;gap:10px}
+.filter-zone{max-width:1720px;margin:0 auto 8px;display:flex;flex-direction:column;gap:10px}
 .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .filter-row .label{font-size:12px;color:var(--muted);letter-spacing:2px;margin-right:2px}
 .filter-spacer{flex:1}
@@ -512,9 +523,25 @@ const goLogout = () => { logout(); router.push('/login') }
   box-shadow:0 0 14px rgba(255,224,138,.15);
 }
 
+/* ===== 主体两栏：左列表（一排 3 位） + 最右天骄榜 ===== */
+.char-body{
+  max-width:1720px;margin:6px auto 0;
+  display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;
+  align-items:start;
+}
+.char-main{min-width:0}
+.rank-side{
+  position:sticky;top:96px;
+  max-height:calc(100vh - 116px);overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(255,214,130,.25) transparent;
+  border-radius:var(--radius);
+}
+.rank-side::-webkit-scrollbar{width:5px}
+.rank-side::-webkit-scrollbar-thumb{background:rgba(255,214,130,.25);border-radius:3px}
+
 /* ===== 列表头 ===== */
 .result-head{
-  max-width:1120px;margin:20px auto 14px;
+  margin:0 0 14px;
   display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding-bottom:10px;border-bottom:1px solid var(--panel-line);
 }
@@ -524,8 +551,7 @@ const goLogout = () => { logout(); router.push('/login') }
 
 /* ===== 人物卡片 ===== */
 .char-grid{
-  max-width:1120px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;
 }
 .char-card{
   position:relative;overflow:hidden;cursor:pointer;
@@ -595,26 +621,25 @@ const goLogout = () => { logout(); router.push('/login') }
 }
 .char-card:hover .go{opacity:1;transform:translateX(3px)}
 
-/* ===== 人物实力排行榜（天骄榜） ===== */
+/* ===== 人物实力排行榜（天骄榜 · 右侧栏） ===== */
 .rank-zone{
-  max-width:1120px;margin:6px auto 22px;
-  padding:18px 20px 16px;border-radius:var(--radius);
+  padding:16px 14px 12px;border-radius:var(--radius);
   background:var(--panel);border:1px solid var(--panel-line);
   box-shadow:var(--shadow);
   backdrop-filter:blur(14px) saturate(140%);
   -webkit-backdrop-filter:blur(14px) saturate(140%);
 }
-.rank-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.rank-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
 .rank-head h3{
-  font-size:18px;letter-spacing:6px;font-weight:800;
+  font-size:17px;letter-spacing:5px;font-weight:800;
   background:linear-gradient(90deg,#fff,var(--gold));
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
-.rank-head span{font-size:12px;color:var(--muted);letter-spacing:1px}
-.rank-board{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+.rank-head span{font-size:11px;color:var(--muted);letter-spacing:1px}
+.rank-board{display:grid;grid-template-columns:1fr;gap:4px}
 .rank-row{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 10px;border-radius:12px;cursor:pointer;
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:7px 8px;border-radius:12px;cursor:pointer;
   border:1px solid transparent;
   transition:background .2s, border-color .2s, transform .2s;
 }
@@ -624,9 +649,9 @@ const goLogout = () => { logout(); router.push('/login') }
 }
 .rank-row.top3{background:rgba(255,224,138,.04)}
 .rk-no{
-  width:30px;height:30px;flex:none;border-radius:9px;
+  width:28px;height:28px;flex:none;border-radius:9px;
   display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:800;font-style:normal;
+  font-size:13px;font-weight:800;font-style:normal;
   color:var(--muted);background:rgba(255,255,255,.05);
   border:1px solid rgba(255,214,130,.16);
 }
@@ -637,30 +662,33 @@ const goLogout = () => { logout(); router.push('/login') }
   width:38px;height:38px;flex:none;border-radius:11px;
   display:flex;align-items:center;justify-content:center;font-size:19px;
 }
-.rk-name{width:170px;flex:none;min-width:0}
+.rk-name{flex:1;min-width:0}
 .rk-name b{
-  display:block;font-size:14.5px;letter-spacing:2px;color:var(--text);
+  display:block;font-size:14px;letter-spacing:2px;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .rk-name i{
-  display:block;margin-top:2px;font-size:11px;font-style:normal;color:var(--muted);
+  display:block;margin-top:2px;font-size:10.5px;font-style:normal;color:var(--muted);
   letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.rk-realm{
-  width:150px;flex:none;font-size:11.5px;color:var(--muted);letter-spacing:.5px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
 .rk-bar-wrap{
-  flex:1;height:6px;border-radius:999px;overflow:hidden;
+  flex-basis:100%;height:4px;border-radius:999px;overflow:hidden;
   background:rgba(255,255,255,.07);
 }
 .rk-bar{display:block;height:100%;border-radius:999px;transition:width .6s ease}
 .rk-score{
-  width:44px;flex:none;text-align:right;font-size:13px;font-weight:700;
+  width:40px;flex:none;text-align:right;font-size:12.5px;font-weight:700;
   color:var(--gold);letter-spacing:1px;
 }
 .rank-empty{
   padding:18px 0;text-align:center;font-size:12.5px;color:var(--muted);letter-spacing:1px;
+}
+.rank-tip{margin:10px 2px 0;font-size:11px;color:rgba(179,166,132,.7);letter-spacing:1px;text-align:center}
+
+/* 头像图（人物卡 / 榜单 / 详情弹层通用） */
+.glyph.img,.rk-glyph.img{
+  object-fit:cover;object-position:center 18%;
+  border:1px solid rgba(255,214,130,.3);
 }
 
 /* ===== 空态 / 错误 ===== */
@@ -716,6 +744,20 @@ const goLogout = () => { logout(); router.push('/login') }
 .fade-enter-from,.fade-leave-to{opacity:0}
 
 /* ===== 响应式 ===== */
+/* 中屏：列表降为 2 列，避免卡片被挤窄 */
+@media (max-width:1200px){
+  .char-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* 窄屏：天骄榜折叠到列表上方（吸顶取消），列表恢复 3 列 */
+@media (max-width:1080px){
+  .char-body{grid-template-columns:1fr;gap:16px}
+  .rank-side{position:static;order:-1;max-height:none;overflow:visible}
+  .rank-board{grid-template-columns:1fr 1fr;gap:4px 14px}
+  .char-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:860px){
+  .char-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media (max-width:640px){
   .char-shell{padding:88px 12px 36px}
   .char-hero h2{font-size:24px;letter-spacing:5px}
@@ -723,6 +765,6 @@ const goLogout = () => { logout(); router.push('/login') }
   .char-grid{grid-template-columns:1fr}
   .filter-spacer{display:none}
   .rank-board{grid-template-columns:1fr}
-  .rk-realm{display:none}
+  .rank-side{order:-1}
 }
 </style>

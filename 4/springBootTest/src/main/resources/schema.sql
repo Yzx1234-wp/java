@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS world_character (
   name        VARCHAR(64)  NOT NULL                COMMENT '人物姓名',
   title       VARCHAR(64)  DEFAULT NULL            COMMENT '称号（如 荒天帝）',
   glyph       VARCHAR(16)  DEFAULT NULL            COMMENT '卡面图标',
+  avatar      VARCHAR(255) DEFAULT NULL            COMMENT '头像图片路径（如 /avatars/shihao.jpg）',
   realm       VARCHAR(64)  DEFAULT NULL            COMMENT '当前境界',
   faction     VARCHAR(64)  DEFAULT NULL            COMMENT '出身/所属势力',
   rank_score  DECIMAL(4,1) NOT NULL DEFAULT 0      COMMENT '实力评分（「按实力」排序用）',

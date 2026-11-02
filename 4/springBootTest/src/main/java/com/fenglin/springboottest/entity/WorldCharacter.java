@@ -30,6 +30,9 @@ public class WorldCharacter {
     /** 卡面图标 */
     private String glyph;
 
+    /** 头像图片路径（如 /avatars/shihao.jpg），为空时前端回退用卡面图标 */
+    private String avatar;
+
     /** 当前境界（仙帝 / 准仙帝 / 仙王 / 真仙 / 人道尊者 …） */
     private String realm;
 
