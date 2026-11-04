@@ -52,7 +52,7 @@ mvn -DskipTests package
 java -jar target/springBootTest-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=dev
 ```
 
-启动后接口基址：`http://127.0.0.1:8081/api`
+启动后接口基址：`http://192.168.68.71:8081/api`
 
 ## 接口一览
 

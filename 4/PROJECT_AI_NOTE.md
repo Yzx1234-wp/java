@@ -19,7 +19,7 @@
   - 本地建库建表脚本：`star_user.sql`（根目录，幂等，必须先执行以保证库存在）
   - 构建产物：`target/springBootTest-0.0.1-SNAPSHOT.jar`
 - `swallowed-star-vue/` —— 前端 (Vue3 + Vite5)
-  - 代理：`vite.config.js` 把 `/api` 代理到 `http://localhost:8081`
+  - 代理：`vite.config.js` 把 `/api` 代理到 `http://192.168.68.71:8081`
   - 脚本：`npm run dev`(5173) / build / preview / lint / format
   - 依赖锁：`package-lock.json` 存在，可用 `npm ci`
 
@@ -65,7 +65,7 @@
 - 路径全部基于 `%~dp0`（脚本所在目录）的相对引用，项目文件夹可整体移动。
 
 ## 6. 接口速查
-- 基址：`http://127.0.0.1:8081/api`
+- 基址：`http://192.168.68.71:8081/api`
 - GET `/api/auth/me`（带 `Authorization: Bearer <token>`）
 - POST `/api/auth/login` `{username,password}` → token
 - POST `/api/auth/register` `{username,password}`

@@ -1,5 +1,5 @@
 // 「我的主页」接口层（对接 Spring Boot 后端 /api/profile，全部需登录）
-// 开发环境通过 Vite 代理把 /api 转发到 http://localhost:8081
+// 开发环境通过 Vite 代理把 /api 转发到 http://192.168.68.71:8081
 const BASE = '/api'
 
 // 统一带上登录 token

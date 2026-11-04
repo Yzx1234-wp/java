@@ -79,7 +79,7 @@ IF ERRORLEVEL 1 (
 )
 popd
 
-echo [4/5] 启动后端  http://127.0.0.1:8081 ...
+echo [4/5] 启动后端  http://192.168.68.71:8081 ...
 IF NOT EXIST "%JAR%" (
   echo [错误] 未找到构建产物: %JAR%
   pause
@@ -99,7 +99,7 @@ ping -n 2 127.0.0.1 >nul
 goto wait_backend
 :backend_ready
 
-echo [5/5] 检查前端依赖并启动  http://localhost:5173 ...
+echo [5/5] 检查前端依赖并启动  http://192.168.68.71:5173 ...
 REM 注意: 只判断 node_modules 目录存在是不够的, 半残目录里 .bin\vite.cmd 会缺失
 REM 注意: 块内的 echo 不能出现半角括号, 否则会被当成语句块结束
 IF NOT EXIST "%VITE_BIN%" (
@@ -126,8 +126,8 @@ start "swallowed-star-frontend" /d "%FRONTEND%" cmd /k "npm run dev"
 echo.
 echo ===================================================
 echo  启动完成!
-echo  前端: http://localhost:5173  (/api 自动代理到 8081)
-echo  后端: http://127.0.0.1:8081/api
+echo  前端: http://192.168.68.71:5173  (/api 自动代理到 8081)
+echo  后端: http://192.168.68.71:8081/api
 echo  演示账号: admin / 123456  (首次启动自动创建)
 echo  停止项目请运行 pause.bat
 echo ===================================================

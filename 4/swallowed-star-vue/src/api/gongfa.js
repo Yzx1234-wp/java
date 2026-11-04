@@ -1,5 +1,5 @@
 // 首页「大荒功法库」接口层（对接 Spring Boot 后端）
-// 开发环境通过 Vite 代理把 /api 转发到 http://localhost:8081
+// 开发环境通过 Vite 代理把 /api 转发到 http://192.168.68.71:8081
 const BASE = '/api'
 
 // 过滤掉空值参数，避免发出 keyword=&cat= 这类无意义查询
