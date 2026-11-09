@@ -15,6 +15,8 @@ import java.util.Map;
  * 启动期初始化：
  * 1) 自动创建演示账号 admin / 123456（BCrypt 加密）；
  * 2) 老库增量迁移：world_character 补 avatar 头像列（新库由 schema.sql 直接建出）。
+ * <p>注：接取 / 报名记录的「完成状态」列迁移放在 schema.sql 里做，
+ * 因为 data.sql 的种子数据已带 points 列，必须保证补列先于数据脚本执行。</p>
  */
 @Component
 public class DataInitializer implements CommandLineRunner {

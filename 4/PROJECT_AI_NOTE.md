@@ -224,3 +224,43 @@
 - 仍走 裁底部水印9% -> 居中裁方 -> 360px JPG 流程，原地覆盖 public/avatars/*.jpg，
   DB avatar 路径未变、无后端改动；无头浏览器复测 32 处图片全部加载、详情弹层正常
 - 提示：浏览器可能缓存旧图，需 Ctrl+F5 强刷
+
+## 16. 积分规则改造 · 后台点「完成」才加积分（2026-11-09）
+
+> 本节取代第 9/10 节里「报名/接取即发积分」的旧描述。
+
+### 新规则
+- 接取任务 / 报名秘境后记录为「待完成」（PENDING），**不加分**；
+- 后台「悬赏任务 / 秘境管理」的记录弹窗里点「完成」→ 记录变「已完成」（COMPLETED），
+  并按任务/秘境**当前配置积分**发放；点「撤销完成」回到待完成并收回积分；
+- 总积分 = 已完成任务积分 + 已完成秘境积分（此前秘境不发积分，本次给 secret_realm 新增 points）；
+- 待完成记录用户可自行取消；已完成记录用户不可取消（报错提示找管理员）。
+
+### 数据结构（老库迁移在 schema.sql 第 9 节，information_schema+PREPARE 幂等补列）
+- ⚠ 迁移放在 schema.sql 而不是 DataInitializer：data.sql 的秘境种子已带 points 列，必须先补列后灌数据；
+- quest_accept / realm_signup 新增 status(PENDING/COMPLETED)、completed_at、completed_by；realm_signup 另有 points 快照；
+- secret_realm 新增 points；老库补列时按等级回填 仙帝1000/仙王600/真仙300/上古100；
+- 存量归一：旧 quest_accept 全部置 COMPLETED（保住已发积分），旧 realm_signup 置 COMPLETED 且 points=0（历史从没发过）→ 升级后总积分不凭空增减。
+
+### 后端
+- 新接口（管理员 token）：POST /api/admin/quests/accepts/{id}/complete | /revert、
+  POST /api/admin/realms/signups/{id}/complete | /revert（重复完成 409，积分按当前配置发放并回写记录）；
+- 计分口径：QuestAcceptMapper/RealmSignupMapper 的 sumPoints 只统计 COMPLETED；
+  GET /api/quests/points 现返回 points=任务+秘境总积分（附 questPoints/realmPoints，供各页导航积分徽章）；
+- 实体新增非表字段：Quest.completed/completedCount、SecretRealm.completed/completedCount；
+  ProfileVO 新增 questDoneCount/realmDoneCount、Activity.status；
+- 接取/报名接口返回 pendingPoints（待发积分，不是到账）。
+
+### 前端
+- 后台：AdminRecordModal 重写（列 format / type:status|points 胶囊、完成/撤销完成按钮、busyId 防连点、
+  顶部提示与「共 X 条 · 已完成 Y · 待完成 Z」汇总，弹窗加宽 lg）；QuestManage/RealmManage 记录弹窗接入，
+  列表加完成数，秘境表单加「通关奖励积分」；Dashboard 加「待完成审核」卡片；
+- 前台：Quests/Realms 接取/报名不再即时加分，卡片显示「⏳ 待后台确认」，已完成显示「✓ 已完成 · +N」且按钮禁用；
+  统计条改「我的积分·已完成 / 待后台确认」；Profile 任务/秘境/动态列表显示状态与完成时间，仅已完成显示积分；
+- 顺带修复旧 bug：Profile.vue 的 activities 未定义导致「修炼动态」页签恒空。
+
+### 已实测（2026-11-09）
+- mvn package 重启 8081：curl 全链路通过——接取→积分不变→后台完成→+300→重复完成 409→已完成取消被拒→
+  撤销完成→积分回退；秘境报名→完成→总积分 4100→5100→撤销→4100；
+- vite build + eslint 通过（仅 4 条历史 warning）；无头 Chrome(CDP) 实测 5 个页面与记录弹窗渲染，控制台零告警；
+- 注意：本机沙箱环境变量 SERVER__PORT 会覆盖端口，手工起后端务必带 `--server.port=8081`。

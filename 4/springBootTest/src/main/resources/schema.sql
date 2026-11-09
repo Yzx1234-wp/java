@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS secret_realm (
   open_time   VARCHAR(120) DEFAULT NULL            COMMENT '开启时间',
   duration    VARCHAR(32)  DEFAULT NULL            COMMENT '开启时长',
   quota       INT          NOT NULL DEFAULT 0      COMMENT '每期名额（0 表示不限）',
+  points      INT          NOT NULL DEFAULT 0      COMMENT '秘境通关奖励积分（后台确认完成后发放）',
   rank_score  DECIMAL(4,1) NOT NULL DEFAULT 0      COMMENT '评级评分（「按评级」排序用）',
   description VARCHAR(600) DEFAULT NULL            COMMENT '秘境介绍',
   is_hot      TINYINT      NOT NULL DEFAULT 0      COMMENT '是否热门秘境：1 是 0 否',
@@ -88,12 +89,16 @@ CREATE TABLE IF NOT EXISTS secret_realm (
   KEY idx_rank (rank_score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='大荒秘境表';
 
--- 6) 秘境报名记录表（每期每人限报一次）
+-- 6) 秘境报名记录表（每期每人限报一次；报名后为待完成，后台点「完成」才发积分）
 CREATE TABLE IF NOT EXISTS realm_signup (
   id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
   realm_id    BIGINT      NOT NULL                COMMENT '秘境 id',
   username    VARCHAR(32) NOT NULL                COMMENT '报名账号',
+  points      INT         NOT NULL DEFAULT 0      COMMENT '报名时留档的通关奖励积分',
+  status      VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT '完成状态：PENDING 待完成 / COMPLETED 已完成（积分已发放）',
   signed_at   DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '报名时间',
+  completed_at DATETIME   DEFAULT NULL            COMMENT '后台确认完成时间',
+  completed_by VARCHAR(32) DEFAULT NULL           COMMENT '确认完成的管理员账号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_realm_user (realm_id, username),
   KEY idx_username (username)
@@ -116,14 +121,121 @@ CREATE TABLE IF NOT EXISTS quest (
   KEY idx_points (points)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='大荒悬赏任务表';
 
--- 8) 任务接取记录表（每项每人限接一次，接取即发积分）
+-- 8) 任务接取记录表（每项每人限接一次；接取后为待完成，后台点「完成」才发积分）
 CREATE TABLE IF NOT EXISTS quest_accept (
   id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
   quest_id    BIGINT      NOT NULL                COMMENT '任务 id',
   username    VARCHAR(32) NOT NULL                COMMENT '接取账号',
-  points      INT         NOT NULL DEFAULT 0      COMMENT '接取时奖励积分（留档）',
+  points      INT         NOT NULL DEFAULT 0      COMMENT '接取时留档的奖励积分（完成时按任务最新积分发放）',
+  status      VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT '完成状态：PENDING 待完成 / COMPLETED 已完成（积分已发放）',
   accepted_at DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '接取时间',
+  completed_at DATETIME   DEFAULT NULL            COMMENT '后台确认完成时间',
+  completed_by VARCHAR(32) DEFAULT NULL           COMMENT '确认完成的管理员账号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_quest_user (quest_id, username),
   KEY idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='任务接取记录表';
+
+-- ============================================================
+-- 9) 老库增量迁移：「后台点完成才加积分」（2026-11-09）
+--    新库由上面的 CREATE TABLE 直接建出；本节只给旧表补列，幂等可重复执行。
+--    MySQL 8 无 ADD COLUMN IF NOT EXISTS，故用 information_schema + 预处理语句判断。
+--    ⚠ 必须在 data.sql 之前执行（data.sql 的秘境种子数据已带 points 列）。
+-- ============================================================
+
+-- 9.1) 秘境主表：通关奖励积分（旧库补列后按等级补默认值）
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'secret_realm' AND COLUMN_NAME = 'points');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE secret_realm ADD COLUMN points INT NOT NULL DEFAULT 0 COMMENT ''秘境通关奖励积分（后台确认完成后发放）''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+SET @ddl := IF(@cnt = 0,
+  'UPDATE secret_realm SET points = CASE grade WHEN ''仙帝'' THEN 1000 WHEN ''仙王'' THEN 600 WHEN ''真仙'' THEN 300 ELSE 100 END WHERE points = 0',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- 9.2) 任务接取记录：完成状态 / 完成时间 / 确认人
+SET @need_status := (SELECT COUNT(*) FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quest_accept' AND COLUMN_NAME = 'status');
+SET @ddl := IF(@need_status = 0,
+  'ALTER TABLE quest_accept ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT ''PENDING'' COMMENT ''完成状态：PENDING 待完成 / COMPLETED 已完成（积分已发放）''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quest_accept' AND COLUMN_NAME = 'completed_at');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE quest_accept ADD COLUMN completed_at DATETIME DEFAULT NULL COMMENT ''后台确认完成时间''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quest_accept' AND COLUMN_NAME = 'completed_by');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE quest_accept ADD COLUMN completed_by VARCHAR(32) DEFAULT NULL COMMENT ''确认完成的管理员账号''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- 旧规则是「接取即发积分」，补列时把存量记录直接置为已完成，避免修士积分凭空消失
+SET @ddl := IF(@need_status = 0,
+  'UPDATE quest_accept SET status = ''COMPLETED'', completed_at = COALESCE(completed_at, accepted_at) WHERE status IS NULL OR status <> ''COMPLETED''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- 9.3) 秘境报名记录：奖励积分 / 完成状态 / 完成时间 / 确认人
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'realm_signup' AND COLUMN_NAME = 'points');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE realm_signup ADD COLUMN points INT NOT NULL DEFAULT 0 COMMENT ''报名时留档的通关奖励积分''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+SET @need_realm_status := (SELECT COUNT(*) FROM information_schema.COLUMNS
+                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'realm_signup' AND COLUMN_NAME = 'status');
+SET @ddl := IF(@need_realm_status = 0,
+  'ALTER TABLE realm_signup ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT ''PENDING'' COMMENT ''完成状态：PENDING 待完成 / COMPLETED 已完成（积分已发放）''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'realm_signup' AND COLUMN_NAME = 'completed_at');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE realm_signup ADD COLUMN completed_at DATETIME DEFAULT NULL COMMENT ''后台确认完成时间''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'realm_signup' AND COLUMN_NAME = 'completed_by');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE realm_signup ADD COLUMN completed_by VARCHAR(32) DEFAULT NULL COMMENT ''确认完成的管理员账号''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- 旧规则下报名从不发积分，存量报名记录标记为已完成（积分保持 0），总积分不变
+SET @ddl := IF(@need_realm_status = 0,
+  'UPDATE realm_signup SET status = ''COMPLETED'', completed_at = COALESCE(completed_at, signed_at) WHERE status IS NULL OR status = ''PENDING''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;

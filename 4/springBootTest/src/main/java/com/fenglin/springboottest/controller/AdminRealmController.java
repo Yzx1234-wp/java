@@ -1,11 +1,13 @@
 package com.fenglin.springboottest.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.common.Validators;
 import com.fenglin.springboottest.controller.dto.IdsRequest;
 import com.fenglin.springboottest.entity.RealmSignup;
 import com.fenglin.springboottest.entity.SecretRealm;
+import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.service.AdminGuard;
 import com.fenglin.springboottest.service.RealmService;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 后台管理 · 大荒秘境录（含报名记录）。
@@ -179,6 +182,77 @@ public class AdminRealmController {
         return Result.ok();
     }
 
+    /**
+     * 后台点「完成」：把报名记录标记为已完成，并按秘境当前积分发放积分。
+     * <p>只有已完成的记录才计入修士总积分；重复点按会返回 409。</p>
+     */
+    @PostMapping("/signups/{signupId}/complete")
+    @Transactional
+    public Result<Map<String, Object>> completeSignup(@PathVariable Long signupId,
+                                                      HttpServletRequest request) {
+        Result<Void> auth = adminGuard.check(request);
+        if (auth != null) {
+            return Result.fail(auth.getCode(), auth.getMessage());
+        }
+        RealmSignup record = signupMapper.selectById(signupId);
+        if (record == null) {
+            return Result.fail(404, "报名记录不存在或已被删除");
+        }
+        if (RecordStatus.isCompleted(record.getStatus())) {
+            return Result.fail(409, "该记录已完成，无需重复发放积分");
+        }
+        SecretRealm realm = realmService.getById(record.getRealmId());
+        if (realm == null) {
+            return Result.fail(404, "对应秘境已被删除，无法发放积分");
+        }
+        int points = realm.getPoints() == null ? 0 : realm.getPoints();
+        signupMapper.update(null, Wrappers.<RealmSignup>lambdaUpdate()
+                .eq(RealmSignup::getId, signupId)
+                .set(RealmSignup::getStatus, RecordStatus.COMPLETED)
+                .set(RealmSignup::getPoints, points)
+                .set(RealmSignup::getCompletedAt, LocalDateTime.now())
+                .set(RealmSignup::getCompletedBy, operator(request)));
+        return Result.ok(Map.of(
+                "signupId", signupId,
+                "username", record.getUsername(),
+                "points", points,
+                "status", RecordStatus.COMPLETED));
+    }
+
+    /** 后台撤销完成：回到「待完成」并收回该记录积分 */
+    @PostMapping("/signups/{signupId}/revert")
+    @Transactional
+    public Result<Map<String, Object>> revertSignup(@PathVariable Long signupId,
+                                                    HttpServletRequest request) {
+        Result<Void> auth = adminGuard.check(request);
+        if (auth != null) {
+            return Result.fail(auth.getCode(), auth.getMessage());
+        }
+        RealmSignup record = signupMapper.selectById(signupId);
+        if (record == null) {
+            return Result.fail(404, "报名记录不存在或已被删除");
+        }
+        if (!RecordStatus.isCompleted(record.getStatus())) {
+            return Result.fail(409, "该记录尚未完成，无需撤销");
+        }
+        signupMapper.update(null, Wrappers.<RealmSignup>lambdaUpdate()
+                .eq(RealmSignup::getId, signupId)
+                .set(RealmSignup::getStatus, RecordStatus.PENDING)
+                .set(RealmSignup::getCompletedAt, null)
+                .set(RealmSignup::getCompletedBy, null));
+        return Result.ok(Map.of(
+                "signupId", signupId,
+                "username", record.getUsername(),
+                "withdrawn", record.getPoints() == null ? 0 : record.getPoints(),
+                "status", RecordStatus.PENDING));
+    }
+
+    /** 当前操作的管理员账号（用于记录是谁点的完成） */
+    private String operator(HttpServletRequest request) {
+        User admin = adminGuard.currentAdmin(request);
+        return admin == null ? "admin" : admin.getUsername();
+    }
+
     // ---------- 内部工具 ----------
 
     private void normalize(SecretRealm r) {
@@ -197,6 +271,9 @@ public class AdminRealmController {
         if (r.getQuota() == null || r.getQuota() < 0) {
             r.setQuota(0);
         }
+        if (r.getPoints() == null || r.getPoints() < 0) {
+            r.setPoints(0);
+        }
         r.setHot(r.getHot() != null && r.getHot() == 1 ? 1 : 0);
     }
 
@@ -214,6 +291,10 @@ public class AdminRealmController {
             return err;
         }
         err = Validators.range(r.getQuota(), 0, 100000, "每期名额");
+        if (err != null) {
+            return err;
+        }
+        err = Validators.range(r.getPoints(), 0, 100000, "通关奖励积分");
         if (err != null) {
             return err;
         }

@@ -114,12 +114,9 @@ public class AdminOverviewController {
         long signupCount = signupMapper.selectCount(null);
         long acceptCount = acceptMapper.selectCount(null);
 
-        int totalPoints = 0;
-        List<Map<String, Object>> userStats = acceptMapper.statsByUser();
-        for (Map<String, Object> row : userStats) {
-            Object pts = row.get("pts");
-            totalPoints += pts instanceof Number ? ((Number) pts).intValue() : 0;
-        }
+        // 只有后台点了「完成」的记录才计入已发放积分
+        int questPoints = acceptMapper.sumAllPoints();
+        int realmPoints = signupMapper.sumAllPoints();
 
         m.put("gongfaCount", gongfaCount);
         m.put("characterCount", characterCount);
@@ -128,7 +125,11 @@ public class AdminOverviewController {
         m.put("userCount", userCount);
         m.put("signupCount", signupCount);
         m.put("acceptCount", acceptCount);
-        m.put("totalPoints", totalPoints);
+        m.put("totalPoints", questPoints + realmPoints);
+        m.put("questPoints", questPoints);
+        m.put("realmPoints", realmPoints);
+        m.put("pendingCount", acceptMapper.countAllPending() + signupMapper.countAllPending());
+        m.put("completedCount", acceptMapper.countAllCompleted() + signupMapper.countAllCompleted());
 
         m.put("gongfaByCat", gongfaMapper.countByCat());
         m.put("characterByGrade", characterMapper.countByGrade());
@@ -157,6 +158,8 @@ public class AdminOverviewController {
             item.put("id", s.getId());
             item.put("username", s.getUsername());
             item.put("target", names.getOrDefault(s.getRealmId(), "已删除的秘境"));
+            item.put("status", s.getStatus());
+            item.put("points", s.getPoints() == null ? 0 : s.getPoints());
             item.put("time", s.getSignedAt() == null ? "" : s.getSignedAt().format(FMT));
             out.add(item);
         }
@@ -181,6 +184,7 @@ public class AdminOverviewController {
             Quest q = quests.get(a.getQuestId());
             item.put("username", a.getUsername());
             item.put("target", q == null ? "已删除的任务" : q.getName());
+            item.put("status", a.getStatus());
             item.put("points", a.getPoints() == null ? 0 : a.getPoints());
             item.put("time", a.getAcceptedAt() == null ? "" : a.getAcceptedAt().format(FMT));
             out.add(item);

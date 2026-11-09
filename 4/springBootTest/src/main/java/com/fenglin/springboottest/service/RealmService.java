@@ -29,13 +29,13 @@ public interface RealmService extends IService<SecretRealm> {
     SecretRealm detail(Long realmId, String username);
 
     /**
-     * 报名秘境（每人每期限报一次，名额已满则拒绝）。
+     * 报名秘境（每人每期限报一次，名额已满则拒绝；报名后为待完成，后台确认完成才发放积分）。
      *
      * @return 报名成功后的最新报名人数
      */
     int signup(Long realmId, String username);
 
-    /** 取消报名 */
+    /** 取消报名（已确认完成并发放积分的报名不可取消，抛出 IllegalArgumentException） */
     void cancelSignup(Long realmId, String username);
 
     /** 我的报名列表 */

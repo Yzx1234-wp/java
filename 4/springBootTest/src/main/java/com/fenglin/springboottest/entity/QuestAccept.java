@@ -10,7 +10,8 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 任务接取记录（每项任务每人限接一次，接取即发积分；quest_id + username 唯一）。
+ * 任务接取记录（每项任务每人限接一次，quest_id + username 唯一）。
+ * <p>接取后为「待完成」（PENDING），只有后台管理点「完成」才置为 COMPLETED 并计入积分。</p>
  */
 @Data
 @TableName("quest_accept")
@@ -26,10 +27,22 @@ public class QuestAccept {
     /** 接取账号 */
     private String username;
 
-    /** 接取时该任务的奖励积分（留档） */
+    /** 奖励积分：接取时留档，后台确认完成时按任务最新积分写入 */
     private Integer points;
+
+    /** 完成状态：PENDING 待完成 / COMPLETED 已完成（已完成才计入总积分） */
+    private String status;
 
     /** 接取时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime acceptedAt;
+
+    /** 后台确认完成时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField("completed_at")
+    private LocalDateTime completedAt;
+
+    /** 确认完成的管理员账号 */
+    @TableField("completed_by")
+    private String completedBy;
 }

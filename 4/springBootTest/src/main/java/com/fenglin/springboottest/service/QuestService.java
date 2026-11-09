@@ -29,16 +29,16 @@ public interface QuestService extends IService<Quest> {
     Quest detail(Long questId, String username);
 
     /**
-     * 接取任务（每人每项限接一次，接取即发积分）。
+     * 接取任务（每人每项限接一次；记录为待完成，后台确认完成才发放积分）。
      *
-     * @return 本次获得的积分
+     * @return 该任务的奖励积分数（待发放）
      */
     int accept(Long questId, String username);
 
     /**
-     * 取消接取（删除接取记录，同步撤销接取时发放的积分）。
+     * 取消接取（删除接取记录；已确认完成并发放积分的记录不可取消，返回 0）。
      *
-     * @return 被撤销的积分数
+     * @return 本次收回的积分（待完成阶段恒为 0）
      */
     int cancelAccept(Long questId, String username);
 

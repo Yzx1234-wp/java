@@ -20,7 +20,7 @@ public class AdminUserVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
-    /** 任务接取总积分 */
+    /** 总积分（已确认完成的任务积分 + 已确认完成的秘境积分） */
     private int points;
 
     /** 接取任务数 */

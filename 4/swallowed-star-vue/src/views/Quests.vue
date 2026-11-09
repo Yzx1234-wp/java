@@ -40,7 +40,7 @@
     <section class="quest-hero">
       <div class="hero-deco">大 荒 悬 赏 榜</div>
       <h2>大荒悬赏榜</h2>
-      <p class="sub">接取悬赏即得积分 · 任务分四等，等级越高积分越丰 · 榜上现有 <b>{{ total }}</b> 项任务</p>
+      <p class="sub">接取悬赏即可开工 · 完成后经后台确认方得积分 · 任务分四等，等级越高积分越丰 · 榜上现有 <b>{{ total }}</b> 项任务</p>
 
       <div class="search-wrap">
         <span class="ico">
@@ -66,19 +66,19 @@
     <section class="stat-zone">
       <div class="stat-card">
         <b>{{ myPoints }}</b>
-        <span>我的总积分</span>
+        <span>我的积分 · 已完成</span>
       </div>
       <div class="stat-card jade">
         <b>{{ myCount }}</b>
         <span>已接任务</span>
       </div>
       <div class="stat-card">
-        <b>{{ total }}</b>
-        <span>悬赏任务总数</span>
+        <b>{{ pendingCount }}</b>
+        <span>待后台确认</span>
       </div>
       <div class="stat-card">
-        <b>{{ topCount }}</b>
-        <span>仙帝级悬赏</span>
+        <b>{{ total }}</b>
+        <span>悬赏任务总数</span>
       </div>
     </section>
 
@@ -119,7 +119,7 @@
         v-for="(item, i) in list"
         :key="item.id || item.name"
         class="quest-card"
-        :class="{ done: item.accepted }"
+        :class="{ done: item.completed }"
         :style="{ animationDelay: (i * 0.05) + 's' }"
         @click="openCard(item)"
       >
@@ -138,16 +138,17 @@
 
         <div class="quest-meta">
           <span>已接 · <b>{{ item.acceptedCount || 0 }} 人</b></span>
-          <span v-if="item.accepted" class="ok-tag">✓ 我已接取</span>
+          <span v-if="item.completed" class="ok-tag">✓ 已完成 · +{{ item.points }}</span>
+          <span v-else-if="item.accepted" class="wait-tag">⏳ 待后台确认</span>
         </div>
 
         <div class="card-foot">
           <div class="go">查看任务详情 →</div>
           <button
             class="btn-accept"
-            :class="{ cancel: item.accepted }"
+            :class="{ cancel: item.accepted && !item.completed, done: item.completed }"
             :disabled="acceptingId === item.id"
-            @click.stop="item.accepted ? onCancel(item) : onAccept(item)"
+            @click.stop="onMainAction(item)"
           >{{ acceptText(item) }}</button>
         </div>
       </article>
@@ -188,7 +189,8 @@
 
           <div class="detail-rows">
             <div class="row"><span>任务等级</span><b>{{ detail.grade }}级（{{ gradeTip(detail.grade) }}）</b></div>
-            <div class="row"><span>接取奖励</span><b>+{{ detail.points }} 积分</b></div>
+            <div class="row"><span>完成奖励</span><b>+{{ detail.points }} 积分（后台确认完成后发放）</b></div>
+            <div class="row"><span>我的状态</span><b>{{ myStatusText(detail) }}</b></div>
             <div class="row"><span>接取进度</span><b>{{ detail.acceptedCount || 0 }} 人已接{{ detail.accepted ? '（含我）' : '' }}</b></div>
           </div>
 
@@ -196,9 +198,9 @@
 
           <button
             class="btn-accept full"
-            :class="{ cancel: detail.accepted }"
+            :class="{ cancel: detail.accepted && !detail.completed, done: detail.completed }"
             :disabled="acceptingId === detail.id"
-            @click="detail.accepted ? onCancel(detail) : onAccept(detail)"
+            @click="onMainAction(detail)"
           >{{ acceptText(detail) }}</button>
 
           <div class="detail-foot">—— 《大荒悬赏榜》 ——</div>
@@ -267,9 +269,9 @@ const sortBy = ref('default')
 /* 首次加载完成后，筛选/排序变化才触发重新检索（避免首次双请求） */
 let booted = false
 
-/* 统计：已接任务数 / 仙帝级数量 */
+/* 统计：已接任务数 / 待后台确认数 */
 const myCount = computed(() => list.value.filter(q => q.accepted).length)
-const topCount = computed(() => list.value.filter(q => q.grade === '仙帝').length)
+const pendingCount = computed(() => list.value.filter(q => q.accepted && !q.completed).length)
 
 /* 筛选项加载（等级 + 热词） */
 async function loadFilters() {
@@ -354,23 +356,40 @@ function openCard(item) {
   detail.value = item
 }
 
-/* ===== 接取 / 取消接取任务（接取即发积分，取消同步撤销） ===== */
+/* ===== 接取 / 取消接取任务（接取为待完成，后台点「完成」才发放积分） ===== */
 function acceptText(item) {
   if (acceptingId.value === item.id) return '处理中…'
-  if (item.accepted) return '取消接取 -' + item.points
-  return '接取 +' + item.points
+  if (item.completed) return '✓ 已完成'
+  if (item.accepted) return '取消接取'
+  return '接取悬赏'
+}
+
+function myStatusText(item) {
+  if (item.completed) return '✓ 已完成 · 积分已到账'
+  if (item.accepted) return '⏳ 已接取 · 等待后台确认完成'
+  return '尚未接取'
+}
+
+function onMainAction(item) {
+  if (item.completed) return
+  if (item.accepted) {
+    onCancel(item)
+  } else {
+    onAccept(item)
+  }
 }
 
 async function onAccept(item) {
   acceptingId.value = item.id
   try {
     const res = await acceptApi(item.id)
-    const gained = (res.data && res.data.gained) || item.points
+    const pending = (res.data && res.data.pendingPoints) || item.points
     // 弹层与卡片共用同一份数据引用，直接改状态即可同步
     item.accepted = true
+    item.completed = false
     item.acceptedCount = (item.acceptedCount || 0) + 1
     await loadPoints()
-    show(`接取成功！「${item.name}」 +${gained} 积分`, 'ok')
+    show(`接取成功！「${item.name}」完成后经后台确认可得 +${pending} 积分`, 'ok')
   } catch (e) {
     show(e.message || '接取失败，请稍后再试', 'err')
   } finally {
@@ -381,12 +400,12 @@ async function onAccept(item) {
 async function onCancel(item) {
   acceptingId.value = item.id
   try {
-    const res = await cancelApi(item.id)
-    const lost = (res.data && res.data.withdrawn) || 0
+    await cancelApi(item.id)
     item.accepted = false
+    item.completed = false
     item.acceptedCount = Math.max(0, (item.acceptedCount || 0) - 1)
     await loadPoints()
-    show(`已取消接取「${item.name}」，撤销 ${lost} 积分`, 'ok')
+    show(`已取消接取「${item.name}」`, 'ok')
   } catch (e) {
     show(e.message || '取消失败，请稍后再试', 'err')
   } finally {
@@ -644,6 +663,7 @@ const goLogout = () => { logout(); router.push('/login') }
 .quest-meta{display:flex;gap:14px;align-items:center;margin:10px 0 8px;font-size:12px;color:var(--muted);letter-spacing:1px}
 .quest-meta b{color:var(--text);font-weight:600}
 .ok-tag{color:var(--cyan);font-weight:600}
+.wait-tag{color:var(--gold);font-weight:600}
 
 .card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .go{font-size:12px;color:var(--muted);letter-spacing:2px;transition:color .25s}
@@ -661,6 +681,7 @@ const goLogout = () => { logout(); router.push('/login') }
   color:var(--cyan);background:rgba(140,232,184,.08);border:1px solid rgba(140,232,184,.4);
   box-shadow:none;
 }
+.btn-accept.done:disabled{filter:none;cursor:default}
 .btn-accept.cancel{
   color:#ffb49a;background:rgba(255,157,122,.08);border:1px solid rgba(255,157,122,.42);
   box-shadow:none;

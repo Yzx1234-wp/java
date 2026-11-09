@@ -45,6 +45,9 @@ public class SecretRealm {
     /** 每期名额（0 表示不限） */
     private Integer quota;
 
+    /** 通关奖励积分（报名后为待完成，后台确认完成才发放） */
+    private Integer points;
+
     /** 秘境评级评分，用于「按评级」排序（前端字段 rank） */
     @TableField("rank_score")
     @JsonProperty("rank")
@@ -68,7 +71,15 @@ public class SecretRealm {
     @TableField(exist = false)
     private Integer signedCount;
 
+    /** 已确认完成人数（非数据库字段，查询时填充） */
+    @TableField(exist = false)
+    private Integer completedCount;
+
     /** 当前登录用户是否已报名（非数据库字段，带 token 查询时填充） */
     @TableField(exist = false)
     private Boolean signed;
+
+    /** 当前登录用户的报名是否已被后台确认完成（非数据库字段，带 token 查询时填充） */
+    @TableField(exist = false)
+    private Boolean completed;
 }

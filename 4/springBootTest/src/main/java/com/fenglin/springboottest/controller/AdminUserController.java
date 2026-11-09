@@ -71,8 +71,11 @@ public class AdminUserController {
         List<User> users = userService.list(q);
 
         Map<String, Integer> realmCounts = new HashMap<>();
+        Map<String, Integer> realmPoints = new HashMap<>();
         for (Map<String, Object> row : signupMapper.countByUser()) {
-            realmCounts.put(String.valueOf(row.get("username")), toInt(row.get("cnt")));
+            String name = String.valueOf(row.get("username"));
+            realmCounts.put(name, toInt(row.get("cnt")));
+            realmPoints.put(name, toInt(row.get("pts")));
         }
         Map<String, Integer> questCounts = new HashMap<>();
         Map<String, Integer> pointsMap = new HashMap<>();
@@ -89,7 +92,9 @@ public class AdminUserController {
             vo.setUsername(u.getUsername());
             vo.setNickname(u.getNickname());
             vo.setCreatedAt(u.getCreatedAt());
-            vo.setPoints(pointsMap.getOrDefault(u.getUsername(), 0));
+            // 总积分 = 已确认完成的任务积分 + 已确认完成的秘境积分
+            vo.setPoints(pointsMap.getOrDefault(u.getUsername(), 0)
+                    + realmPoints.getOrDefault(u.getUsername(), 0));
             vo.setQuestCount(questCounts.getOrDefault(u.getUsername(), 0));
             vo.setRealmCount(realmCounts.getOrDefault(u.getUsername(), 0));
             vo.setAdmin(adminGuard.isAdmin(u.getUsername()));

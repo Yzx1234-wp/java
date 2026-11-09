@@ -5,6 +5,7 @@ import com.fenglin.springboottest.controller.dto.OptionVO;
 import com.fenglin.springboottest.controller.dto.QuestAcceptRequest;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.User;
+import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.service.QuestService;
 import com.fenglin.springboottest.service.TokenStore;
 import com.fenglin.springboottest.service.UserService;
@@ -24,7 +25,8 @@ import java.util.Map;
 
 /**
  * 「大荒悬赏 · 任务接取」接口。
- * 任务浏览为公开数据；接取任务需登录（Bearer token），接取即发积分。
+ * 任务浏览为公开数据；接取任务需登录（Bearer token）。
+ * 接取后记录为「待完成」，需后台管理点「完成」才发放积分。
  */
 @RestController
 @RequestMapping("/api/quests")
@@ -38,6 +40,9 @@ public class QuestController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private RealmSignupMapper signupMapper;
 
     /**
      * 任务检索
@@ -79,7 +84,7 @@ public class QuestController {
         return Result.ok(quest);
     }
 
-    /** 我的总积分（需登录） */
+    /** 我的总积分（任务 + 秘境，仅统计后台已确认完成的记录；需登录） */
     @GetMapping("/points")
     public Result<Map<String, Object>> points(
             @RequestHeader(value = "Authorization", required = false) String auth) {
@@ -87,7 +92,13 @@ public class QuestController {
         if (username == null) {
             return Result.fail(401, "请先登录后再查看积分");
         }
-        return Result.ok(Map.of("username", username, "points", questService.myPoints(username)));
+        int questPoints = questService.myPoints(username);
+        int realmPoints = signupMapper.sumPoints(username);
+        return Result.ok(Map.of(
+                "username", username,
+                "points", questPoints + realmPoints,
+                "questPoints", questPoints,
+                "realmPoints", realmPoints));
     }
 
     /** 我的接取列表（需登录） */
@@ -101,7 +112,7 @@ public class QuestController {
         return Result.ok(questService.myQuests(username));
     }
 
-    /** 接取任务（需登录，body: {"questId": 1}，接取即发积分） */
+    /** 接取任务（需登录，body: {"questId": 1}；接取后为待完成，后台确认完成才发积分） */
     @PostMapping("/accept")
     public Result<Map<String, Object>> accept(
             @RequestBody QuestAcceptRequest req,
@@ -114,17 +125,17 @@ public class QuestController {
             return Result.fail(401, "请先登录后再接取任务");
         }
         try {
-            int gained = questService.accept(req.getQuestId(), username);
+            int pending = questService.accept(req.getQuestId(), username);
             return Result.ok(Map.of(
                     "questId", req.getQuestId(),
-                    "gained", gained,
+                    "pendingPoints", pending,
                     "totalPoints", questService.myPoints(username)));
         } catch (IllegalArgumentException e) {
             return Result.fail(e.getMessage());
         }
     }
 
-    /** 取消接取（需登录，删除接取记录并撤销接取时发放的积分） */
+    /** 取消接取（需登录；已确认完成的任务不可取消） */
     @DeleteMapping("/accept/{questId}")
     public Result<Map<String, Object>> cancelAccept(
             @PathVariable Long questId,

@@ -51,9 +51,14 @@
         <em class="hint">累计接取记录</em>
       </div>
       <div class="adm-stat">
+        <b>{{ n('pendingCount') }}</b>
+        <span>待完成审核</span>
+        <em class="hint">任务 + 秘境 · 点完成才发积分</em>
+      </div>
+      <div class="adm-stat">
         <b>{{ n('totalPoints') }}</b>
         <span>累计发放积分</span>
-        <em class="hint">按接取留档积分求和</em>
+        <em class="hint">仅统计后台已确认完成</em>
       </div>
     </div>
 
@@ -90,7 +95,7 @@
           <div v-for="r in recentSignups" :key="r.id" class="adm-feed-row">
             <span class="dot"></span>
             <span class="who">{{ r.username }}</span>
-            <span class="what">报名「{{ r.target }}」</span>
+            <span class="what">报名「{{ r.target }}」{{ r.status === 'COMPLETED' ? '+' + r.points : '· 待完成' }}</span>
             <span class="when">{{ r.time }}</span>
           </div>
         </div>
@@ -103,7 +108,7 @@
           <div v-for="r in recentAccepts" :key="r.id" class="adm-feed-row">
             <span class="dot"></span>
             <span class="who">{{ r.username }}</span>
-            <span class="what">接取「{{ r.target }}」+{{ r.points }}</span>
+            <span class="what">接取「{{ r.target }}」{{ r.status === 'COMPLETED' ? '+' + r.points : '· 待完成' }}</span>
             <span class="when">{{ r.time }}</span>
           </div>
         </div>

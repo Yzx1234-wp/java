@@ -68,7 +68,7 @@ export function myApi() {
   return get('/realms/my')
 }
 
-/** 报名秘境 */
+/** 报名秘境（记录为待完成，后台点「完成」后才发放积分） */
 export function signupApi(realmId) {
   return request('/realms/signup', {
     method: 'POST',
@@ -77,7 +77,7 @@ export function signupApi(realmId) {
   })
 }
 
-/** 取消报名 */
+/** 取消报名（待完成阶段可取消；已确认完成的记录需联系管理员撤销） */
 export function cancelApi(realmId) {
   return request('/realms/signup/' + realmId, { method: 'DELETE', headers: authHeaders() })
 }

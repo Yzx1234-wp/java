@@ -2,6 +2,7 @@ package com.fenglin.springboottest.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.controller.dto.ProfileVO;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.QuestAccept;
@@ -80,15 +81,24 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
             vo.setCreatedAt(user.getCreatedAt());
         }
 
-        int points = acceptMapper.sumPoints(username);
+        // 只有后台确认完成的记录才计入总积分（任务 + 秘境）
+        int points = acceptMapper.sumPoints(username) + signupMapper.sumPoints(username);
         long questCount = acceptMapper.selectCount(Wrappers.<QuestAccept>lambdaQuery()
                 .eq(QuestAccept::getUsername, username));
         long realmCount = signupMapper.selectCount(Wrappers.<RealmSignup>lambdaQuery()
                 .eq(RealmSignup::getUsername, username));
+        long questDone = acceptMapper.selectCount(Wrappers.<QuestAccept>lambdaQuery()
+                .eq(QuestAccept::getUsername, username)
+                .eq(QuestAccept::getStatus, RecordStatus.COMPLETED));
+        long realmDone = signupMapper.selectCount(Wrappers.<RealmSignup>lambdaQuery()
+                .eq(RealmSignup::getUsername, username)
+                .eq(RealmSignup::getStatus, RecordStatus.COMPLETED));
 
         vo.setTotalPoints(points);
         vo.setQuestCount((int) questCount);
+        vo.setQuestDoneCount((int) questDone);
         vo.setRealmCount((int) realmCount);
+        vo.setRealmDoneCount((int) realmDone);
         vo.setTier(buildTier(points));
         vo.setBadges(buildBadges(points, (int) questCount, (int) realmCount,
                 hasEmperorQuest(username)));
@@ -123,7 +133,9 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
             item.put("points", r.getPoints());
             item.put("poster", q.getPoster());
             item.put("desc", q.getDescription());
+            item.put("status", r.getStatus());
             item.put("acceptedAt", r.getAcceptedAt());
+            item.put("completedAt", r.getCompletedAt());
             items.add(item);
         }
         return items;
@@ -156,7 +168,10 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
             item.put("openTime", realm.getOpenTime());
             item.put("duration", realm.getDuration());
             item.put("desc", realm.getDescription());
+            item.put("points", r.getPoints());
+            item.put("status", r.getStatus());
             item.put("signedAt", r.getSignedAt());
+            item.put("completedAt", r.getCompletedAt());
             items.add(item);
         }
         return items;
@@ -254,6 +269,7 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
                 act.setGlyph(q.getGlyph());
                 act.setGrade(q.getGrade());
                 act.setPoints(a.getPoints());
+                act.setStatus(a.getStatus());
                 act.setTime(a.getAcceptedAt());
                 list.add(act);
             }
@@ -277,6 +293,8 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
                 act.setName(r.getName());
                 act.setGlyph(r.getGlyph());
                 act.setGrade(r.getGrade());
+                act.setPoints(s.getPoints());
+                act.setStatus(s.getStatus());
                 act.setTime(s.getSignedAt());
                 list.add(act);
             }

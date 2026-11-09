@@ -40,7 +40,7 @@
     <section class="realm-hero">
       <div class="hero-deco">大 荒 秘 境 录</div>
       <h2>大荒秘境录</h2>
-      <p class="sub">仙古遗迹 · 十凶凶地 · 帝路机缘，凡开启有时者皆录于此 · 共 <b>{{ total }}</b> 处秘境</p>
+      <p class="sub">仙古遗迹 · 十凶凶地 · 帝路机缘 · 通关后经后台确认方得积分 · 共 <b>{{ total }}</b> 处秘境</p>
 
       <div class="search-wrap">
         <span class="ico">
@@ -77,8 +77,8 @@
         <span>我的报名</span>
       </div>
       <div class="stat-card">
-        <b>{{ openNowCount }}</b>
-        <span>已报满待下期</span>
+        <b>{{ pendingCount }}</b>
+        <span>待后台确认</span>
       </div>
     </section>
 
@@ -144,6 +144,7 @@
         <div class="realm-meta">
           <span>时长 · <b>{{ item.duration || '不限' }}</b></span>
           <span>名额 · <b>{{ quotaText(item) }}</b></span>
+          <span>通关 · <b>+{{ item.points || 0 }} 积分</b></span>
         </div>
 
         <div class="quota-row">
@@ -154,11 +155,15 @@
         </div>
 
         <div class="card-foot">
-          <div class="go">查看秘境详情 →</div>
+          <div class="go">
+            <span v-if="item.completed" class="ok-tag">✓ 已完成 · +{{ item.points || 0 }}</span>
+            <span v-else-if="item.signed" class="wait-tag">⏳ 待后台确认</span>
+            <span v-else>查看秘境详情 →</span>
+          </div>
           <button
             class="btn-sign"
-            :class="{ signed: item.signed }"
-            :disabled="signingId === item.id"
+            :class="{ signed: item.signed && !item.completed, done: item.completed }"
+            :disabled="signingId === item.id || item.completed"
             @click.stop="onSignup(item)"
           >{{ signupText(item) }}</button>
         </div>
@@ -207,7 +212,9 @@
           <div class="detail-rows">
             <div class="row"><span>开启时长</span><b>{{ detail.duration || '不限' }}</b></div>
             <div class="row"><span>每期名额</span><b>{{ quotaText(detail) }}</b></div>
+            <div class="row"><span>通关奖励</span><b>+{{ detail.points || 0 }} 积分（后台确认完成后发放）</b></div>
             <div class="row"><span>秘境评级</span><b>{{ detail.rank }} / 10</b></div>
+            <div class="row"><span>我的状态</span><b>{{ myStatusText(detail) }}</b></div>
             <div class="row"><span>已报名</span><b>{{ detail.signedCount || 0 }} 人{{ detail.signed ? '（含我）' : '' }}</b></div>
           </div>
 
@@ -215,8 +222,8 @@
 
           <button
             class="btn-sign full"
-            :class="{ signed: detail.signed }"
-            :disabled="signingId === detail.id"
+            :class="{ signed: detail.signed && !detail.completed, done: detail.completed }"
+            :disabled="signingId === detail.id || detail.completed"
             @click="onSignup(detail)"
           >{{ signupText(detail) }}</button>
 
@@ -281,10 +288,10 @@ const sortBy = ref('default')
 /* 首次加载完成后，筛选/排序变化才触发重新检索（避免首次双请求） */
 let booted = false
 
-/* 统计：报名总人次 / 我的报名 / 已满秘境数 */
+/* 统计：报名总人次 / 我的报名 / 待后台确认 */
 const totalSigned = computed(() => list.value.reduce((s, r) => s + (r.signedCount || 0), 0))
 const myCount = computed(() => list.value.filter(r => r.signed).length)
-const openNowCount = computed(() => list.value.filter(r => r.quota > 0 && (r.signedCount || 0) >= r.quota).length)
+const pendingCount = computed(() => list.value.filter(r => r.signed && !r.completed).length)
 
 /* 筛选项加载（等级 + 热词） */
 async function loadFilters() {
@@ -358,27 +365,39 @@ function openCard(item) {
   detail.value = item
 }
 
-/* ===== 报名 / 取消报名 ===== */
+/* ===== 报名 / 取消报名（报名为待完成，后台点「完成」才发放积分） ===== */
 function signupText(item) {
   if (signingId.value === item.id) return '处理中…'
+  if (item.completed) return '✓ 已完成'
   if (item.signed) return '✓ 已报名 · 取消'
   if (item.quota > 0 && (item.signedCount || 0) >= item.quota) return '名额已满'
   return '秘境报名'
 }
 
+function myStatusText(item) {
+  if (item.completed) return '✓ 已完成 · 积分已到账'
+  if (item.signed) return '⏳ 已报名 · 等待后台确认完成'
+  return '尚未报名'
+}
+
 async function onSignup(item) {
+  if (item.completed) return
   signingId.value = item.id
   try {
     if (item.signed) {
       await cancelApi(item.id)
       show(`已取消「${item.name}」报名`, 'ok')
+      item.signed = false
+      item.completed = false
+      item.signedCount = Math.max(0, (item.signedCount || 0) - 1)
     } else {
-      await signupApi(item.id)
-      show(`报名成功，静候「${item.name}」开启`, 'ok')
+      const res = await signupApi(item.id)
+      const pending = (res.data && res.data.pendingPoints) || item.points || 0
+      show(`报名成功，通关并经后台确认后可得 +${pending} 积分`, 'ok')
+      item.signed = true
+      item.completed = false
+      item.signedCount = (item.signedCount || 0) + 1
     }
-    // 弹层与卡片共用同一份数据引用，直接改状态即可同步
-    item.signed = !item.signed
-    item.signedCount = Math.max(0, (item.signedCount || 0) + (item.signed ? 1 : -1))
   } catch (e) {
     show(e.message || '报名失败，请稍后再试', 'err')
   } finally {
@@ -633,8 +652,10 @@ const goLogout = () => { logout(); router.push('/login') }
   min-height:72px;letter-spacing:.5px;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-.realm-meta{display:flex;gap:16px;margin:10px 0 8px;font-size:12px;color:var(--muted);letter-spacing:1px}
+.realm-meta{display:flex;gap:16px;margin:10px 0 8px;font-size:12px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap}
 .realm-meta b{color:var(--text);font-weight:600}
+.ok-tag{color:var(--cyan);font-weight:600;letter-spacing:1px}
+.wait-tag{color:var(--gold);font-weight:600;letter-spacing:1px}
 
 /* 名额进度 */
 .quota-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -661,6 +682,11 @@ const goLogout = () => { logout(); router.push('/login') }
   color:var(--cyan);background:rgba(140,232,184,.08);border:1px solid rgba(140,232,184,.4);
   box-shadow:none;
 }
+.btn-sign.done{
+  color:var(--cyan);background:rgba(140,232,184,.08);border:1px solid rgba(140,232,184,.55);
+  box-shadow:none;
+}
+.btn-sign.done:disabled{filter:none;cursor:default}
 .btn-sign.full{width:100%;margin-top:14px;padding:12px;font-size:14px;letter-spacing:4px}
 
 /* ===== 空状态 ===== */

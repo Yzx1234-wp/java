@@ -57,7 +57,7 @@
       </template>
       <template #col-points="{ row }"><b style="color:var(--gold)">{{ row.points ?? 0 }}</b></template>
       <template #col-acceptedCount="{ row }">
-        <span>{{ row.acceptedCount || 0 }} 人</span>
+        <span>{{ row.acceptedCount || 0 }} 人<small class="adm-muted" style="display:block">完成 {{ row.completedCount || 0 }}</small></span>
       </template>
       <template #col-hot="{ row }">
         <button class="adm-pill" :class="row.hot ? 'on' : 'off'" type="button" @click="toggleHot(row)">
@@ -87,9 +87,14 @@
       :columns="recordColumns"
       :rows="records.rows"
       :loading="records.loading"
+      :busy-id="records.busyId"
       removable
+      completable
+      hint="修士接取后记录为 <b>待完成</b>，点「完成」才真正发放积分；已完成的记录可点「撤销完成」收回积分。"
       empty-text="当前还没有修士接取这项悬赏"
       @close="records.open = false"
+      @complete="completeAccept"
+      @revert="revertAccept"
       @remove="removeAccept"
     />
 
@@ -142,22 +147,25 @@ const columns = [
   { key: 'glyph', label: '图标', width: '52px' },
   { key: 'name', label: '任务' },
   { key: 'grade', label: '等级', width: '74px' },
-  { key: 'points', label: '积分', width: '70px' },
-  { key: 'acceptedCount', label: '已接取', width: '84px' },
+  { key: 'points', label: '完成积分', width: '86px' },
+  { key: 'acceptedCount', label: '接取 / 完成', width: '96px' },
   { key: 'hot', label: '热门', width: '74px' },
   { key: 'createdAt', label: '创建时间', width: '136px' }
 ]
 
 const recordColumns = [
   { key: 'username', label: '接取账号' },
-  { key: 'points', label: '发放积分' },
-  { key: 'acceptedAt', label: '接取时间' }
+  { key: 'points', label: '积分', type: 'points', format: (r) => '+' + (r.points || 0) },
+  { key: 'status', label: '状态', type: 'status' },
+  { key: 'acceptedAt', label: '接取时间' },
+  { key: 'completedAt', label: '完成时间', format: (r) => fmtTime(r.completedAt) },
+  { key: 'completedBy', label: '确认人' }
 ]
 
 const fields = [
   { key: 'name', label: '任务名称', type: 'text', required: true, maxlength: 50, placeholder: '如 猎杀堕落仙帝残魂' },
   { key: 'grade', label: '任务等级', type: 'select', required: true, options: GRADES.map(g => ({ value: g, label: g })) },
-  { key: 'points', label: '接取积分', type: 'number', min: 0, max: 100000, step: 10, hint: '参考：仙帝 1000 / 仙王 600 / 真仙 300 / 上古 100' },
+  { key: 'points', label: '完成积分', type: 'number', min: 0, max: 100000, step: 10, hint: '后台点「完成」后发放；参考：仙帝 1000 / 仙王 600 / 真仙 300 / 上古 100' },
   { key: 'glyph', label: '卡面图标', type: 'text', maxlength: 4, placeholder: '如 ⚔ 👑' },
   { key: 'poster', label: '发布方', type: 'text', maxlength: 60, placeholder: '如 上界 · 天庭悬赏' },
   { key: 'hot', label: '标记为热门任务', type: 'checkbox' },
@@ -170,7 +178,7 @@ const saving = ref(false)
 const deleting = ref(null)
 const batchConfirm = ref(false)
 const form = reactive({})
-const records = reactive({ open: false, id: null, title: '', rows: [], loading: false })
+const records = reactive({ open: false, id: null, name: '', title: '', rows: [], loading: false, busyId: null })
 
 onMounted(load)
 
@@ -270,11 +278,16 @@ async function toggleHot(row) {
 async function openRecords(row) {
   records.open = true
   records.id = row.id
+  records.name = row.name
   records.title = `「${row.name}」接取记录`
   records.rows = []
+  await loadRecords()
+}
+
+async function loadRecords() {
   records.loading = true
   try {
-    const res = await questApi.accepts(row.id)
+    const res = await questApi.accepts(records.id)
     records.rows = res.data || []
   } catch (e) {
     fail(e, '接取记录加载失败')
@@ -283,15 +296,52 @@ async function openRecords(row) {
   }
 }
 
+/* 点「完成」：后台确认后才为修士发放积分 */
+async function completeAccept(row) {
+  records.busyId = row.id
+  try {
+    const res = await questApi.completeAccept(row.id)
+    const points = (res.data && res.data.points) || 0
+    show(`已确认完成，为 ${row.username} 发放 ${points} 积分`, 'ok')
+    await loadRecords()
+    load(true)
+  } catch (e) {
+    fail(e, '确认完成失败')
+  } finally {
+    records.busyId = null
+  }
+}
+
+/* 撤销完成：记录回到待完成，积分收回 */
+async function revertAccept(row) {
+  records.busyId = row.id
+  try {
+    const res = await questApi.revertAccept(row.id)
+    const lost = (res.data && res.data.withdrawn) || 0
+    show(`已撤销完成，收回 ${row.username} 的 ${lost} 积分`, 'ok')
+    await loadRecords()
+    load(true)
+  } catch (e) {
+    fail(e, '撤销完成失败')
+  } finally {
+    records.busyId = null
+  }
+}
+
 async function removeAccept(row) {
   try {
     await questApi.removeAccept(row.id)
-    show('已撤销该接取记录', 'ok')
-    records.rows = records.rows.filter(r => r.id !== row.id)
+    show('已删除该接取记录', 'ok')
+    await loadRecords()
     load(true)
   } catch (e) {
-    fail(e, '撤销失败')
+    fail(e, '删除失败')
   }
+}
+
+function fmtTime(t) {
+  if (!t) return '—'
+  return String(t).replace('T', ' ').slice(0, 16)
 }
 
 function gradeStyle(grade) {

@@ -63,7 +63,7 @@ export function detailApi(id) {
   return get('/quests/' + id)
 }
 
-/** 我的总积分 */
+/** 我的总积分（任务 + 秘境，仅统计后台已确认完成的记录） */
 export function pointsApi() {
   return get('/quests/points')
 }
@@ -73,7 +73,7 @@ export function myApi() {
   return get('/quests/my')
 }
 
-/** 接取任务（接取即发积分） */
+/** 接取任务（记录为待完成，后台点「完成」后才发放积分） */
 export function acceptApi(questId) {
   return request('/quests/accept', {
     method: 'POST',
@@ -82,7 +82,7 @@ export function acceptApi(questId) {
   })
 }
 
-/** 取消接取（删除接取记录并撤销接取时发放的积分） */
+/** 取消接取（待完成阶段可取消；已确认完成的记录需联系管理员撤销） */
 export function cancelApi(questId) {
   return request('/quests/accept/' + questId, {
     method: 'DELETE',

@@ -60,7 +60,9 @@
       </template>
       <template #col-quota="{ row }">
         <span :style="{ color: quotaColor(row) }">{{ quotaText(row) }}</span>
+        <small class="adm-muted" style="display:block">完成 {{ row.completedCount || 0 }}</small>
       </template>
+      <template #col-points="{ row }"><b style="color:var(--gold)">{{ row.points ?? 0 }}</b></template>
       <template #col-hot="{ row }">
         <button class="adm-pill" :class="row.hot ? 'on' : 'off'" type="button" @click="toggleHot(row)">
           {{ row.hot ? '热门' : '普通' }}
@@ -89,9 +91,14 @@
       :columns="recordColumns"
       :rows="records.rows"
       :loading="records.loading"
+      :busy-id="records.busyId"
       removable
+      completable
+      hint="修士报名后记录为 <b>待完成</b>，点「完成」才真正发放积分；已完成的记录可点「撤销完成」收回积分。"
       empty-text="当前还没有修士报名这处秘境"
       @close="records.open = false"
+      @complete="completeSignup"
+      @revert="revertSignup"
       @remove="removeSignup"
     />
 
@@ -144,8 +151,9 @@ const columns = [
   { key: 'glyph', label: '图标', width: '52px' },
   { key: 'name', label: '秘境' },
   { key: 'grade', label: '等级', width: '74px' },
+  { key: 'points', label: '完成积分', width: '86px' },
   { key: 'openTime', label: '开启时间' },
-  { key: 'quota', label: '名额', width: '110px' },
+  { key: 'quota', label: '名额 / 完成', width: '120px' },
   { key: 'rank', label: '评级', width: '58px' },
   { key: 'hot', label: '热门', width: '74px' },
   { key: 'createdAt', label: '创建时间', width: '136px' }
@@ -153,7 +161,11 @@ const columns = [
 
 const recordColumns = [
   { key: 'username', label: '报名账号' },
-  { key: 'signedAt', label: '报名时间' }
+  { key: 'points', label: '积分', type: 'points', format: (r) => '+' + (r.points || 0) },
+  { key: 'status', label: '状态', type: 'status' },
+  { key: 'signedAt', label: '报名时间' },
+  { key: 'completedAt', label: '完成时间', format: (r) => fmtTime(r.completedAt) },
+  { key: 'completedBy', label: '确认人' }
 ]
 
 const fields = [
@@ -161,6 +173,7 @@ const fields = [
   { key: 'grade', label: '秘境等级', type: 'select', required: true, options: GRADES.map(g => ({ value: g, label: g })) },
   { key: 'glyph', label: '卡面图标', type: 'text', maxlength: 4, placeholder: '如 🌌 ⚰' },
   { key: 'rank', label: '评级评分', type: 'number', min: 0, max: 10, step: 0.1, hint: '0-10 之间，越大越靠前' },
+  { key: 'points', label: '通关奖励积分', type: 'number', min: 0, max: 100000, step: 10, hint: '后台点「完成」后发放；参考：仙帝 1000 / 仙王 600 / 真仙 300 / 上古 100' },
   { key: 'location', label: '所在地', type: 'text', maxlength: 60, placeholder: '如 九天之上 · 天幕裂隙' },
   { key: 'quota', label: '每期名额', type: 'number', min: 0, step: 1, hint: '填 0 表示不限名额' },
   { key: 'openTime', label: '开启时间', type: 'text', maxlength: 100, placeholder: '如 每逢甲子 · 十月圆满之夜' },
@@ -175,7 +188,7 @@ const saving = ref(false)
 const deleting = ref(null)
 const batchConfirm = ref(false)
 const form = reactive({})
-const records = reactive({ open: false, id: null, title: '', rows: [], loading: false })
+const records = reactive({ open: false, id: null, name: '', title: '', rows: [], loading: false, busyId: null })
 
 onMounted(load)
 
@@ -196,7 +209,7 @@ function openCreate() {
   editingId.value = null
   Object.keys(form).forEach(k => delete form[k])
   Object.assign(form, {
-    name: '', grade: '', glyph: '', rank: 5, location: '', quota: 0,
+    name: '', grade: '', glyph: '', rank: 5, points: 100, location: '', quota: 0,
     openTime: '', duration: '', desc: '', hot: false
   })
   showForm.value = true
@@ -210,6 +223,7 @@ function openEdit(row) {
     grade: row.grade || '',
     glyph: row.glyph || '',
     rank: row.rank === null || row.rank === undefined ? 0 : Number(row.rank),
+    points: row.points === null || row.points === undefined ? 0 : Number(row.points),
     location: row.location || '',
     quota: row.quota === null || row.quota === undefined ? 0 : Number(row.quota),
     openTime: row.openTime || '',
@@ -226,6 +240,7 @@ async function save(data) {
     grade: data.grade,
     glyph: (data.glyph || '').trim(),
     rank: data.rank === '' || data.rank === null ? 0 : Number(data.rank),
+    points: data.points === '' || data.points === null ? 0 : Number(data.points),
     location: (data.location || '').trim(),
     quota: data.quota === '' || data.quota === null ? 0 : Number(data.quota),
     openTime: (data.openTime || '').trim(),
@@ -297,11 +312,16 @@ async function toggleHot(row) {
 async function openRecords(row) {
   records.open = true
   records.id = row.id
+  records.name = row.name
   records.title = `「${row.name}」报名记录`
   records.rows = []
+  await loadRecords()
+}
+
+async function loadRecords() {
   records.loading = true
   try {
-    const res = await realmApi.signups(row.id)
+    const res = await realmApi.signups(records.id)
     records.rows = res.data || []
   } catch (e) {
     fail(e, '报名记录加载失败')
@@ -310,15 +330,52 @@ async function openRecords(row) {
   }
 }
 
+/* 点「完成」：后台确认后才为修士发放积分 */
+async function completeSignup(row) {
+  records.busyId = row.id
+  try {
+    const res = await realmApi.completeSignup(row.id)
+    const points = (res.data && res.data.points) || 0
+    show(`已确认完成，为 ${row.username} 发放 ${points} 积分`, 'ok')
+    await loadRecords()
+    load(true)
+  } catch (e) {
+    fail(e, '确认完成失败')
+  } finally {
+    records.busyId = null
+  }
+}
+
+/* 撤销完成：记录回到待完成，积分收回 */
+async function revertSignup(row) {
+  records.busyId = row.id
+  try {
+    const res = await realmApi.revertSignup(row.id)
+    const lost = (res.data && res.data.withdrawn) || 0
+    show(`已撤销完成，收回 ${row.username} 的 ${lost} 积分`, 'ok')
+    await loadRecords()
+    load(true)
+  } catch (e) {
+    fail(e, '撤销完成失败')
+  } finally {
+    records.busyId = null
+  }
+}
+
 async function removeSignup(row) {
   try {
     await realmApi.removeSignup(row.id)
-    show('已撤销该报名记录', 'ok')
-    records.rows = records.rows.filter(r => r.id !== row.id)
+    show('已删除该报名记录', 'ok')
+    await loadRecords()
     load(true)
   } catch (e) {
-    fail(e, '撤销失败')
+    fail(e, '删除失败')
   }
+}
+
+function fmtTime(t) {
+  if (!t) return '—'
+  return String(t).replace('T', ' ').slice(0, 16)
 }
 
 function gradeStyle(grade) {

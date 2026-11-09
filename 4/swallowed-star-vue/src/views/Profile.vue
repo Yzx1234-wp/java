@@ -66,11 +66,11 @@
       </div>
       <div class="stat-card jade">
         <b>{{ summary.questCount || 0 }}</b>
-        <span>已接任务</span>
+        <span>已接任务 · 完成 {{ summary.questDoneCount || 0 }}</span>
       </div>
       <div class="stat-card violet">
         <b>{{ summary.realmCount || 0 }}</b>
-        <span>已报秘境</span>
+        <span>已报秘境 · 完成 {{ summary.realmDoneCount || 0 }}</span>
       </div>
       <div class="stat-card">
         <b>{{ summary.badgeCount || 0 }}<i class="badge-total">/ {{ badges.length }}</i></b>
@@ -139,9 +139,10 @@
               <span class="glyph" :style="glyphStyle(q.grade)">{{ q.glyph }}</span>
               <div class="line-main">
                 <b>{{ q.name }}</b>
-                <span class="line-sub">{{ q.grade }}级 · 接取于 {{ fmtTime(q.acceptedAt) }}</span>
+                <span class="line-sub">{{ q.grade }}级 · {{ q.status === 'COMPLETED' ? '完成于 ' + fmtTime(q.completedAt) : '接取于 ' + fmtTime(q.acceptedAt) }}</span>
               </div>
-              <span class="line-points" :style="pointsStyle(q.grade)">+{{ q.points }}</span>
+              <span v-if="q.status === 'COMPLETED'" class="line-points" :style="pointsStyle(q.grade)">+{{ q.points }}</span>
+              <span v-else class="status-tag pending">待完成 +{{ q.points }}</span>
             </div>
             <div v-if="!quests.length && !loading" class="mini-empty">
               还未接取任何悬赏，<a @click.prevent="goQuests">去悬赏榜揭榜 →</a>
@@ -154,9 +155,10 @@
               <span class="glyph" :style="glyphStyle(r.grade)">{{ r.glyph }}</span>
               <div class="line-main">
                 <b>{{ r.name }}</b>
-                <span class="line-sub">{{ r.grade }}级 · {{ r.openTime }}</span>
+                <span class="line-sub">{{ r.grade }}级 · {{ r.status === 'COMPLETED' ? '完成于 ' + fmtTime(r.completedAt) : '报名于 ' + fmtTime(r.signedAt) }}</span>
               </div>
-              <span class="line-time">报名于 {{ fmtTime(r.signedAt) }}</span>
+              <span v-if="r.status === 'COMPLETED'" class="line-points" :style="pointsStyle(r.grade)">+{{ r.points }}</span>
+              <span v-else class="status-tag pending">待完成 +{{ r.points }}</span>
             </div>
             <div v-if="!realms.length && !loading" class="mini-empty">
               还未报名任何秘境，<a @click.prevent="goRealms">去秘境首页报名 →</a>
@@ -171,10 +173,10 @@
                 <b>
                   {{ a.type === 'quest' ? '接取悬赏' : '报名秘境' }} · {{ a.name }}
                 </b>
-                <span class="line-sub">{{ a.grade }}级 · {{ fmtTime(a.time) }}</span>
+                <span class="line-sub">{{ a.grade }}级 · {{ fmtTime(a.time) }} · {{ a.status === 'COMPLETED' ? '已完成' : '待后台确认' }}</span>
               </div>
-              <span v-if="a.type === 'quest'" class="line-points" :style="pointsStyle(a.grade)">+{{ a.points }}</span>
-              <span v-else class="act-tag">秘境</span>
+              <span v-if="a.status === 'COMPLETED'" class="line-points" :style="pointsStyle(a.grade)">+{{ a.points }}</span>
+              <span v-else class="status-tag pending">待完成</span>
             </div>
             <div v-if="!activities.length && !loading" class="mini-empty">
               暂无修炼动态，接取任务或报名秘境后这里会留下足迹
@@ -218,10 +220,13 @@ const quests = ref([])
 const realms = ref([])
 const activeTab = ref('quests')
 
+/* 修炼动态（任务接取 + 秘境报名合并时间线，由后端 summary 一并返回） */
+const activities = computed(() => summary.value.activities || [])
+
 const tabs = computed(() => [
   { key: 'quests', label: '我的任务', count: quests.value.length },
   { key: 'realms', label: '我的秘境', count: realms.value.length },
-  { key: 'acts', label: '修炼动态', count: (summary.value.activities || []).length }
+  { key: 'acts', label: '修炼动态', count: activities.value.length }
 ])
 
 /* ===== 境界相关 ===== */
@@ -519,6 +524,13 @@ const goLogout = () => { logout(); router.push('/login') }
   padding:3px 10px;border-radius:999px;font-size:11px;flex:none;
   color:#c9a7ff;border:1px solid rgba(201,167,255,.4);background:rgba(201,167,255,.08);
   letter-spacing:1px;
+}
+.status-tag{
+  padding:3px 10px;border-radius:999px;font-size:11px;flex:none;letter-spacing:1px;
+  border:1px solid transparent;
+}
+.status-tag.pending{
+  color:var(--gold);border-color:rgba(255,224,138,.4);background:rgba(255,224,138,.08);
 }
 .mini-empty{padding:34px 10px;text-align:center;font-size:13px;color:var(--muted);letter-spacing:1px}
 .mini-empty a{color:var(--gold);cursor:pointer;text-decoration:underline dotted}

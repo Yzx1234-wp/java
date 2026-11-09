@@ -140,14 +140,20 @@ export const characterApi = crud('/admin/characters', {
 
 export const realmApi = crud('/admin/realms', {
   signups: (id) => request('GET', `/admin/realms/${id}/signups`),
-  removeSignup: (signupId) => request('DELETE', `/admin/realms/signups/${signupId}`)
+  removeSignup: (signupId) => request('DELETE', `/admin/realms/signups/${signupId}`),
+  // 点「完成」才发放积分；撤销完成会收回该记录积分
+  completeSignup: (signupId) => request('POST', `/admin/realms/signups/${signupId}/complete`),
+  revertSignup: (signupId) => request('POST', `/admin/realms/signups/${signupId}/revert`)
 })
 
 // ---------- 大荒悬赏（含接取记录） ----------
 
 export const questApi = crud('/admin/quests', {
   accepts: (id) => request('GET', `/admin/quests/${id}/accepts`),
-  removeAccept: (acceptId) => request('DELETE', `/admin/quests/accepts/${acceptId}`)
+  removeAccept: (acceptId) => request('DELETE', `/admin/quests/accepts/${acceptId}`),
+  // 点「完成」才发放积分；撤销完成会收回该记录积分
+  completeAccept: (acceptId) => request('POST', `/admin/quests/accepts/${acceptId}/complete`),
+  revertAccept: (acceptId) => request('POST', `/admin/quests/accepts/${acceptId}/revert`)
 })
 
 // ---------- 修士账号 ----------

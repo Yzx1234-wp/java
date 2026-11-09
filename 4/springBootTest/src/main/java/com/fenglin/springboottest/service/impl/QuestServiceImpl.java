@@ -3,6 +3,7 @@ package com.fenglin.springboottest.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.controller.dto.OptionVO;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.QuestAccept;
@@ -114,6 +115,8 @@ public class QuestServiceImpl extends ServiceImpl<QuestMapper, Quest> implements
         record.setQuestId(questId);
         record.setUsername(username);
         record.setPoints(quest.getPoints() == null ? 0 : quest.getPoints());
+        // 接取只是登记，待后台确认完成才发放积分
+        record.setStatus(RecordStatus.PENDING);
         record.setAcceptedAt(LocalDateTime.now());
         acceptMapper.insert(record);
         return record.getPoints();
@@ -132,8 +135,11 @@ public class QuestServiceImpl extends ServiceImpl<QuestMapper, Quest> implements
         if (record == null) {
             throw new IllegalArgumentException("你尚未接取「" + quest.getName() + "」，无法取消");
         }
+        if (RecordStatus.isCompleted(record.getStatus())) {
+            throw new IllegalArgumentException("「" + quest.getName() + "」已由后台确认完成并发放积分，如需撤销请联系管理员");
+        }
         acceptMapper.deleteById(record.getId());
-        return record.getPoints() == null ? 0 : record.getPoints();
+        return 0;
     }
 
     @Override
@@ -157,30 +163,39 @@ public class QuestServiceImpl extends ServiceImpl<QuestMapper, Quest> implements
         return acceptMapper.sumPoints(username);
     }
 
-    /** 填充每个任务的接取人数与当前用户接取状态 */
+    /** 填充每个任务的接取人数、已确认完成人数与当前用户接取 / 完成状态 */
     private void fillAcceptInfo(List<Quest> quests, String username) {
         if (quests == null || quests.isEmpty()) {
             return;
         }
         Map<Long, Integer> counts = new HashMap<>();
+        Map<Long, Integer> doneCounts = new HashMap<>();
         for (Map<String, Object> row : acceptMapper.countByQuest()) {
             Object qid = row.get("questId");
-            Object cnt = row.get("cnt");
-            if (qid != null) {
-                counts.put(Long.valueOf(String.valueOf(qid)),
-                        cnt instanceof Number ? ((Number) cnt).intValue() : 0);
+            if (qid == null) {
+                continue;
             }
+            Long key = Long.valueOf(String.valueOf(qid));
+            counts.put(key, toInt(row.get("cnt")));
+            doneCounts.put(key, toInt(row.get("done")));
         }
-        java.util.Set<Long> mine = new java.util.HashSet<>();
+        Map<Long, String> mine = new HashMap<>();
         if (username != null && !username.isBlank()) {
             acceptMapper.selectList(Wrappers.<QuestAccept>lambdaQuery()
                             .eq(QuestAccept::getUsername, username))
-                    .forEach(a -> mine.add(a.getQuestId()));
+                    .forEach(a -> mine.put(a.getQuestId(), a.getStatus()));
         }
         for (Quest q : quests) {
             q.setAcceptedCount(counts.getOrDefault(q.getId(), 0));
-            q.setAccepted(mine.contains(q.getId()));
+            q.setCompletedCount(doneCounts.getOrDefault(q.getId(), 0));
+            q.setAccepted(mine.containsKey(q.getId()));
+            q.setCompleted(RecordStatus.isCompleted(mine.get(q.getId())));
         }
+    }
+
+    /** 安全取整（SUM/COUNT 在不同驱动下可能返回 Long / BigDecimal） */
+    private int toInt(Object v) {
+        return v instanceof Number ? ((Number) v).intValue() : 0;
     }
 
     /** 「全部」/ 空 视为不筛选 */

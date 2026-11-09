@@ -1,11 +1,13 @@
 package com.fenglin.springboottest.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.common.Validators;
 import com.fenglin.springboottest.controller.dto.IdsRequest;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.QuestAccept;
+import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.mapper.QuestAcceptMapper;
 import com.fenglin.springboottest.service.AdminGuard;
 import com.fenglin.springboottest.service.QuestService;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 后台管理 · 大荒悬赏榜（含接取记录）。
@@ -162,7 +165,7 @@ public class AdminQuestController {
                 .orderByDesc(QuestAccept::getId)));
     }
 
-    /** 管理员撤销某条接取记录（同时相当于收回该记录发放的积分） */
+    /** 管理员撤销某条接取记录（同时收回该记录已发放的积分） */
     @DeleteMapping("/accepts/{acceptId}")
     public Result<Void> deleteAccept(@PathVariable Long acceptId, HttpServletRequest request) {
         Result<Void> auth = adminGuard.check(request);
@@ -174,6 +177,77 @@ public class AdminQuestController {
         }
         acceptMapper.deleteById(acceptId);
         return Result.ok();
+    }
+
+    /**
+     * 后台点「完成」：把接取记录标记为已完成，并按任务当前积分发放积分。
+     * <p>只有已完成的记录才计入修士总积分；重复点按会返回 409。</p>
+     */
+    @PostMapping("/accepts/{acceptId}/complete")
+    @Transactional
+    public Result<Map<String, Object>> completeAccept(@PathVariable Long acceptId,
+                                                      HttpServletRequest request) {
+        Result<Void> auth = adminGuard.check(request);
+        if (auth != null) {
+            return Result.fail(auth.getCode(), auth.getMessage());
+        }
+        QuestAccept record = acceptMapper.selectById(acceptId);
+        if (record == null) {
+            return Result.fail(404, "接取记录不存在或已被删除");
+        }
+        if (RecordStatus.isCompleted(record.getStatus())) {
+            return Result.fail(409, "该记录已完成，无需重复发放积分");
+        }
+        Quest quest = questService.getById(record.getQuestId());
+        if (quest == null) {
+            return Result.fail(404, "对应任务已被删除，无法发放积分");
+        }
+        int points = quest.getPoints() == null ? 0 : quest.getPoints();
+        acceptMapper.update(null, Wrappers.<QuestAccept>lambdaUpdate()
+                .eq(QuestAccept::getId, acceptId)
+                .set(QuestAccept::getStatus, RecordStatus.COMPLETED)
+                .set(QuestAccept::getPoints, points)
+                .set(QuestAccept::getCompletedAt, LocalDateTime.now())
+                .set(QuestAccept::getCompletedBy, operator(request)));
+        return Result.ok(Map.of(
+                "acceptId", acceptId,
+                "username", record.getUsername(),
+                "points", points,
+                "status", RecordStatus.COMPLETED));
+    }
+
+    /** 后台撤销完成：回到「待完成」并收回该记录积分 */
+    @PostMapping("/accepts/{acceptId}/revert")
+    @Transactional
+    public Result<Map<String, Object>> revertAccept(@PathVariable Long acceptId,
+                                                    HttpServletRequest request) {
+        Result<Void> auth = adminGuard.check(request);
+        if (auth != null) {
+            return Result.fail(auth.getCode(), auth.getMessage());
+        }
+        QuestAccept record = acceptMapper.selectById(acceptId);
+        if (record == null) {
+            return Result.fail(404, "接取记录不存在或已被删除");
+        }
+        if (!RecordStatus.isCompleted(record.getStatus())) {
+            return Result.fail(409, "该记录尚未完成，无需撤销");
+        }
+        acceptMapper.update(null, Wrappers.<QuestAccept>lambdaUpdate()
+                .eq(QuestAccept::getId, acceptId)
+                .set(QuestAccept::getStatus, RecordStatus.PENDING)
+                .set(QuestAccept::getCompletedAt, null)
+                .set(QuestAccept::getCompletedBy, null));
+        return Result.ok(Map.of(
+                "acceptId", acceptId,
+                "username", record.getUsername(),
+                "withdrawn", record.getPoints() == null ? 0 : record.getPoints(),
+                "status", RecordStatus.PENDING));
+    }
+
+    /** 当前操作的管理员账号（用于记录是谁点的完成） */
+    private String operator(HttpServletRequest request) {
+        User admin = adminGuard.currentAdmin(request);
+        return admin == null ? "admin" : admin.getUsername();
     }
 
     // ---------- 内部工具 ----------

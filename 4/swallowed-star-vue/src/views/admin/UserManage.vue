@@ -35,7 +35,7 @@
       <template #col-username="{ row }">
         <span class="adm-name" :title="row.username">{{ row.username }}</span>
       </template>
-      <template #col-points="{ row }"><b style="color:var(--gold)">{{ row.points }}</b></template>
+      <template #col-points="{ row }"><b style="color:var(--gold)" title="已完成任务 + 已完成秘境">{{ row.points }}</b></template>
       <template #col-role="{ row }">
         <span class="adm-tag" :style="row.admin ? adminTagStyle() : userTagStyle()">{{ row.admin ? '管理员' : '修士' }}</span>
       </template>
@@ -106,7 +106,7 @@ const {
 const columns = [
   { key: 'username', label: '账号' },
   { key: 'nickname', label: '昵称' },
-  { key: 'points', label: '积分', width: '70px' },
+  { key: 'points', label: '已发积分', width: '84px' },
   { key: 'questCount', label: '接取任务', width: '86px' },
   { key: 'realmCount', label: '报名秘境', width: '86px' },
   { key: 'role', label: '角色', width: '84px' },

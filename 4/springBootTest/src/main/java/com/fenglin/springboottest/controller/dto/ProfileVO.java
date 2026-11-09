@@ -22,14 +22,20 @@ public class ProfileVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
-    /** 总积分（接取任务累积） */
+    /** 总积分（后台已确认完成的任务 + 秘境积分之和） */
     private Integer totalPoints;
 
     /** 已接任务数 */
     private Integer questCount;
 
+    /** 已确认完成的任务数 */
+    private Integer questDoneCount;
+
     /** 已报名秘境数 */
     private Integer realmCount;
+
+    /** 已确认完成的秘境数 */
+    private Integer realmDoneCount;
 
     /** 已点亮成就数 */
     private Integer badgeCount;
@@ -76,8 +82,10 @@ public class ProfileVO {
         private String glyph;
         /** 等级 */
         private String grade;
-        /** 任务动态才有：获得积分 */
+        /** 任务动态才有：奖励积分 */
         private Integer points;
+        /** 记录状态：PENDING 待完成 / COMPLETED 已完成（已完成才计入积分） */
+        private String status;
         /** 发生时间 */
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime time;

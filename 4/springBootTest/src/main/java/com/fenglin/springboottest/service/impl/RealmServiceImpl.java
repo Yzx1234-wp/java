@@ -3,6 +3,7 @@ package com.fenglin.springboottest.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.controller.dto.OptionVO;
 import com.fenglin.springboottest.entity.RealmSignup;
 import com.fenglin.springboottest.entity.SecretRealm;
@@ -124,6 +125,9 @@ public class RealmServiceImpl extends ServiceImpl<SecretRealmMapper, SecretRealm
         RealmSignup signup = new RealmSignup();
         signup.setRealmId(realmId);
         signup.setUsername(username);
+        signup.setPoints(realm.getPoints() == null ? 0 : realm.getPoints());
+        // 报名只是登记，待后台确认完成才发放积分
+        signup.setStatus(RecordStatus.PENDING);
         signup.setSignedAt(LocalDateTime.now());
         signupMapper.insert(signup);
 
@@ -134,6 +138,14 @@ public class RealmServiceImpl extends ServiceImpl<SecretRealmMapper, SecretRealm
     @Override
     @Transactional
     public void cancelSignup(Long realmId, String username) {
+        RealmSignup record = signupMapper.selectOne(Wrappers.<RealmSignup>lambdaQuery()
+                .eq(RealmSignup::getRealmId, realmId)
+                .eq(RealmSignup::getUsername, username));
+        if (record != null && RecordStatus.isCompleted(record.getStatus())) {
+            SecretRealm realm = getById(realmId);
+            String name = realm == null ? "该秘境" : "「" + realm.getName() + "」";
+            throw new IllegalArgumentException(name + "已由后台确认完成并发放积分，如需撤销请联系管理员");
+        }
         signupMapper.delete(Wrappers.<RealmSignup>lambdaQuery()
                 .eq(RealmSignup::getRealmId, realmId)
                 .eq(RealmSignup::getUsername, username));
@@ -156,30 +168,39 @@ public class RealmServiceImpl extends ServiceImpl<SecretRealmMapper, SecretRealm
         return ids.stream().map(map::get).filter(java.util.Objects::nonNull).toList();
     }
 
-    /** 填充每个秘境的报名人数与当前用户报名状态 */
+    /** 填充每个秘境的报名人数、已确认完成人数与当前用户报名 / 完成状态 */
     private void fillSignupInfo(List<SecretRealm> realms, String username) {
         if (realms == null || realms.isEmpty()) {
             return;
         }
         Map<Long, Integer> counts = new HashMap<>();
+        Map<Long, Integer> doneCounts = new HashMap<>();
         for (Map<String, Object> row : signupMapper.countByRealm()) {
             Object rid = row.get("realmId");
-            Object cnt = row.get("cnt");
-            if (rid != null) {
-                counts.put(Long.valueOf(String.valueOf(rid)),
-                        cnt instanceof Number ? ((Number) cnt).intValue() : 0);
+            if (rid == null) {
+                continue;
             }
+            Long key = Long.valueOf(String.valueOf(rid));
+            counts.put(key, toInt(row.get("cnt")));
+            doneCounts.put(key, toInt(row.get("done")));
         }
-        java.util.Set<Long> mine = new java.util.HashSet<>();
+        Map<Long, String> mine = new HashMap<>();
         if (username != null && !username.isBlank()) {
             signupMapper.selectList(Wrappers.<RealmSignup>lambdaQuery()
                             .eq(RealmSignup::getUsername, username))
-                    .forEach(s -> mine.add(s.getRealmId()));
+                    .forEach(s -> mine.put(s.getRealmId(), s.getStatus()));
         }
         for (SecretRealm r : realms) {
             r.setSignedCount(counts.getOrDefault(r.getId(), 0));
-            r.setSigned(mine.contains(r.getId()));
+            r.setCompletedCount(doneCounts.getOrDefault(r.getId(), 0));
+            r.setSigned(mine.containsKey(r.getId()));
+            r.setCompleted(RecordStatus.isCompleted(mine.get(r.getId())));
         }
+    }
+
+    /** 安全取整（SUM/COUNT 在不同驱动下可能返回 Long / BigDecimal） */
+    private int toInt(Object v) {
+        return v instanceof Number ? ((Number) v).intValue() : 0;
     }
 
     /** 「全部」/ 空 视为不筛选 */

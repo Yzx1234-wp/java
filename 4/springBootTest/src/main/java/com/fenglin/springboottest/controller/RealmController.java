@@ -104,13 +104,17 @@ public class RealmController {
         }
         try {
             int signedCount = realmService.signup(req.getRealmId(), username);
-            return Result.ok(Map.of("realmId", req.getRealmId(), "signedCount", signedCount));
+            SecretRealm realm = realmService.getById(req.getRealmId());
+            int pendingPoints = realm == null || realm.getPoints() == null ? 0 : realm.getPoints();
+            return Result.ok(Map.of("realmId", req.getRealmId(),
+                    "signedCount", signedCount,
+                    "pendingPoints", pendingPoints));
         } catch (IllegalArgumentException e) {
             return Result.fail(e.getMessage());
         }
     }
 
-    /** 取消报名（需登录） */
+    /** 取消报名（需登录；已确认完成的报名不可取消） */
     @DeleteMapping("/signup/{realmId}")
     public Result<Void> cancel(
             @PathVariable Long realmId,
@@ -119,8 +123,12 @@ public class RealmController {
         if (username == null) {
             return Result.fail(401, "请先登录后再操作报名");
         }
-        realmService.cancelSignup(realmId, username);
-        return Result.ok();
+        try {
+            realmService.cancelSignup(realmId, username);
+            return Result.ok();
+        } catch (IllegalArgumentException e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
     /* ===== 私有辅助 ===== */
