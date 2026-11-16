@@ -17,11 +17,14 @@ public class User {
     /** 账号（唯一） */
     private String username;
 
-    /** 密码（BCrypt 加密存储） */
+    /** 密码（明文存储，演示项目不做加密） */
     private String password;
 
     /** 昵称 */
     private String nickname;
+
+    /** 权限：0 管理员 / 1 默认（普通修士），注册用户默认 1 */
+    private Integer permission;
 
     /** 创建时间 */
     private LocalDateTime createdAt;

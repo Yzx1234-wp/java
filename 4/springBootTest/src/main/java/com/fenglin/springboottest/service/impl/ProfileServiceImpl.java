@@ -2,6 +2,7 @@ package com.fenglin.springboottest.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fenglin.springboottest.common.CultivationLadder;
 import com.fenglin.springboottest.common.RecordStatus;
 import com.fenglin.springboottest.controller.dto.ProfileVO;
 import com.fenglin.springboottest.entity.Quest;
@@ -9,12 +10,15 @@ import com.fenglin.springboottest.entity.QuestAccept;
 import com.fenglin.springboottest.entity.RealmSignup;
 import com.fenglin.springboottest.entity.SecretRealm;
 import com.fenglin.springboottest.entity.User;
+import com.fenglin.springboottest.entity.UserCultivation;
 import com.fenglin.springboottest.mapper.QuestAcceptMapper;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
+import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.service.ProfileService;
 import com.fenglin.springboottest.service.QuestService;
 import com.fenglin.springboottest.service.RealmService;
+import com.fenglin.springboottest.service.ShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,28 +37,6 @@ import java.util.Objects;
 @Service
 public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements ProfileService {
 
-    /** 修炼境界阶梯（《完美世界》标准 18 境，按总积分逐级解锁；等级越高积分越多） */
-    private static final List<Map.Entry<String, Integer>> TIERS = List.of(
-            Map.entry("搬血", 0),
-            Map.entry("洞天", 100),
-            Map.entry("化灵", 300),
-            Map.entry("铭纹", 600),
-            Map.entry("列阵", 900),
-            Map.entry("尊者", 1200),
-            Map.entry("神火", 1600),
-            Map.entry("真一", 2000),
-            Map.entry("圣祭", 2500),
-            Map.entry("天神", 3000),
-            Map.entry("虚道", 3600),
-            Map.entry("斩我", 4200),
-            Map.entry("遁一", 5000),
-            Map.entry("至尊", 6000),
-            Map.entry("真仙", 7000),
-            Map.entry("仙王", 8000),
-            Map.entry("准仙帝", 10000),
-            Map.entry("仙帝", 15000)
-    );
-
     @Autowired
     private QuestAcceptMapper acceptMapper;
 
@@ -62,10 +44,16 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
     private RealmSignupMapper signupMapper;
 
     @Autowired
+    private UserCultivationMapper cultivationMapper;
+
+    @Autowired
     private QuestService questService;
 
     @Autowired
     private RealmService realmService;
+
+    @Autowired
+    private ShopService shopService;
 
     @Override
     public ProfileVO summary(String username) {
@@ -81,8 +69,11 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
             vo.setCreatedAt(user.getCreatedAt());
         }
 
-        // 只有后台确认完成的记录才计入总积分（任务 + 秘境）
-        int points = acceptMapper.sumPoints(username) + signupMapper.sumPoints(username);
+        // 只有后台确认完成的记录才计入积分（任务 + 秘境）；
+        // 商店兑换消耗同一份积分：累计获得 - 已消耗 = 当前可用
+        int earned = acceptMapper.sumPoints(username) + signupMapper.sumPoints(username);
+        int spent = shopService.spentPoints(username);
+        int points = Math.max(0, earned - spent);
         long questCount = acceptMapper.selectCount(Wrappers.<QuestAccept>lambdaQuery()
                 .eq(QuestAccept::getUsername, username));
         long realmCount = signupMapper.selectCount(Wrappers.<RealmSignup>lambdaQuery()
@@ -95,12 +86,15 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
                 .eq(RealmSignup::getStatus, RecordStatus.COMPLETED));
 
         vo.setTotalPoints(points);
+        vo.setEarnedPoints(earned);
+        vo.setSpentPoints(spent);
         vo.setQuestCount((int) questCount);
         vo.setQuestDoneCount((int) questDone);
         vo.setRealmCount((int) realmCount);
         vo.setRealmDoneCount((int) realmDone);
-        vo.setTier(buildTier(points));
-        vo.setBadges(buildBadges(points, (int) questCount, (int) realmCount,
+        vo.setTier(buildTier(username));
+        // 徽章按「历史累计获得」判定，兑换消耗不会让已点亮的成就熄灭
+        vo.setBadges(buildBadges(earned, (int) questCount, (int) realmCount,
                 hasEmperorQuest(username)));
         vo.setBadgeCount((int) vo.getBadges().stream().filter(ProfileVO.Badge::getUnlocked).count());
         vo.setActivities(buildActivities(username));
@@ -179,29 +173,31 @@ public class ProfileServiceImpl extends ServiceImpl<UserMapper, User> implements
 
     /* ===== 私有辅助 ===== */
 
-    /** 由总积分定位当前境界与下一境进度 */
-    private ProfileVO.Tier buildTier(int points) {
+    /**
+     * 当前境界与修为进度。
+     * <p>⚠ 境界与积分彻底解耦：积分再多也不会自动涨境界，
+     * 这里读的是「修炼境界」页的修为档案（参悟功法 + 打坐吐纳积累，本人渡劫成功才晋升）。
+     * 尚未入门（无档案）时按「搬血境 · 修为 0」展示，不落库。</p>
+     */
+    private ProfileVO.Tier buildTier(String username) {
+        UserCultivation uc = cultivationMapper.selectOne(Wrappers.<UserCultivation>lambdaQuery()
+                .eq(UserCultivation::getUsername, username));
+        int index = CultivationLadder.clampIndex(uc == null || uc.getRealmIndex() == null ? 0 : uc.getRealmIndex());
+        int exp = uc == null || uc.getExp() == null ? 0 : Math.max(0, uc.getExp());
+        int need = CultivationLadder.need(index);
+        boolean top = CultivationLadder.isTop(index);
+
         ProfileVO.Tier tier = new ProfileVO.Tier();
-        int idx = 0;
-        for (int i = 0; i < TIERS.size(); i++) {
-            if (points >= TIERS.get(i).getValue()) {
-                idx = i;
-            }
-        }
-        tier.setName(TIERS.get(idx).getKey());
-        tier.setIndex(idx);
-        if (idx >= TIERS.size() - 1) {
-            tier.setProgress(100.0);
-            tier.setNext(null);
-            tier.setNextPoints(null);
-        } else {
-            int cur = TIERS.get(idx).getValue();
-            int next = TIERS.get(idx + 1).getValue();
-            double progress = next == cur ? 100 : Math.round((points - cur) * 1000.0 / (next - cur)) / 10.0;
-            tier.setProgress(progress);
-            tier.setNext(TIERS.get(idx + 1).getKey());
-            tier.setNextPoints(next);
-        }
+        tier.setName(CultivationLadder.name(index));
+        tier.setIndex(index);
+        tier.setExp(exp);
+        tier.setNeed(need);
+        tier.setTop(top);
+        tier.setNext(top ? null : CultivationLadder.name(index + 1));
+        tier.setNextPoints(need);
+        tier.setRemain(top ? 0 : Math.max(0, need - exp));
+        double progress = top || need <= 0 ? 100.0 : Math.min(100.0, Math.round(exp * 1000.0 / need) / 10.0);
+        tier.setProgress(progress);
         return tier;
     }
 

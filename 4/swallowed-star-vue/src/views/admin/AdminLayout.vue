@@ -31,7 +31,7 @@
 
       <div class="adm-side-foot">
         完美世界 · 数据管理控制台<br>
-        <span style="color:rgba(179,166,132,.6)">v2.0 · 六模块</span>
+        <span style="color:rgba(179,166,132,.6)">v2.1 · 七模块</span>
       </div>
     </aside>
 
@@ -86,6 +86,7 @@ const ICONS = {
   characters: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.9-5.4 6.5-5.4s6.5 2.1 6.5 5.4"/><path d="M17 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 14.6c2 .6 3.2 2.2 3.2 4.4"/></svg>',
   realms: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg>',
   quests: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  cultivation: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 6c-4 2-6 5.5-6 9a6 6 0 0 0 12 0c0-3.5-2-7-6-9z"/><path d="M9 14a3 3 0 0 0 3 3"/></svg>',
   users: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a4 4 0 1 0-6.9 2.7"/><path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M19 21v-1a5 5 0 0 0-5-5h-4a5 5 0 0 0-5 5v1"/><circle cx="18.5" cy="9.5" r="2.2"/></svg>'
 }
 
@@ -95,6 +96,7 @@ const menus = [
   { path: '/admin/characters', label: '人物管理', icon: ICONS.characters, countKey: 'characterCount' },
   { path: '/admin/realms', label: '秘境管理', icon: ICONS.realms, countKey: 'realmCount' },
   { path: '/admin/quests', label: '悬赏任务', icon: ICONS.quests, countKey: 'questCount' },
+  { path: '/admin/cultivations', label: '修炼境界', icon: ICONS.cultivation, countKey: '' },
   { path: '/admin/users', label: '修士账号', icon: ICONS.users, countKey: 'userCount' }
 ]
 

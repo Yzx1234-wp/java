@@ -19,7 +19,7 @@
       <button class="adm-btn" type="button" @click="load()">查 询</button>
       <button class="adm-btn" type="button" @click="reset">重 置</button>
       <span class="grow"></span>
-      <span class="adm-muted">管理员账号受保护，不可删除</span>
+      <span class="adm-muted">密码明文存储（演示项目）· 管理员账号受保护，不可删除</span>
     </div>
 
     <AdminTable
@@ -37,12 +37,19 @@
       </template>
       <template #col-points="{ row }"><b style="color:var(--gold)" title="已完成任务 + 已完成秘境">{{ row.points }}</b></template>
       <template #col-role="{ row }">
-        <span class="adm-tag" :style="row.admin ? adminTagStyle() : userTagStyle()">{{ row.admin ? '管理员' : '修士' }}</span>
+        <span class="adm-tag" :style="row.permission === 0 ? adminTagStyle() : userTagStyle()">{{ row.permission === 0 ? '管理员' : '修士' }}</span>
       </template>
       <template #col-createdAt="{ row }"><span class="adm-muted">{{ row.createdAt || '—' }}</span></template>
       <template #actions="{ row }">
         <button class="adm-op" type="button" @click="openRename(row)">改昵称</button>
         <button class="adm-op" type="button" @click="openPassword(row)">重置密码</button>
+        <button
+          class="adm-op"
+          type="button"
+          :disabled="row.permission === 0 && isSelf(row)"
+          :title="row.permission === 0 ? (isSelf(row) ? '不能收回自己当前账号的管理员权限' : '收回该账号的后台管理权限') : '授予该账号后台管理权限'"
+          @click="togglePermission(row)"
+        >{{ row.permission === 0 ? '收回权限' : '设为管理员' }}</button>
         <button
           class="adm-op del"
           type="button"
@@ -92,7 +99,7 @@ import AdminTable from './components/AdminTable.vue'
 import AdminFormModal from './components/AdminFormModal.vue'
 import AdminConfirm from './components/AdminConfirm.vue'
 import { useCrudPage } from './composables/useCrudPage.js'
-import { userApi } from '../../api/admin.js'
+import { userApi, getAdminSession } from '../../api/admin.js'
 import { useToast } from '../../composables/useToast.js'
 
 const PAGE_SIZE = 10
@@ -195,6 +202,26 @@ async function doDelete() {
     load(true)
   } catch (e) {
     fail(e, '删除失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+/* 当前登录管理员账号（自己不能收回自己的权限，后端同样拦截） */
+const meName = (getAdminSession() || {}).username || ''
+const isSelf = (row) => !!row.username && row.username === meName
+
+/* 切换权限：0 管理员 <-> 1 默认；不能收回自己的权限（后端也会拦截） */
+async function togglePermission(row) {
+  const target = row.permission === 0 ? 1 : 0
+  const action = target === 0 ? '授予' : '收回'
+  saving.value = true
+  try {
+    await userApi.setPermission(row.id, target)
+    show(`已${action}「${row.username}」的后台管理权限`, 'ok')
+    load(true)
+  } catch (e) {
+    fail(e, `${action}权限失败`)
   } finally {
     saving.value = false
   }

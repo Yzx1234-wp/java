@@ -29,6 +29,9 @@ public class AdminUserVO {
     /** 报名秘境数 */
     private int realmCount;
 
-    /** 是否为后台管理员账号 */
+    /** 是否为后台管理员账号（由 permission 字段判定） */
     private boolean admin;
+
+    /** 权限值：0 管理员 / 1 默认（普通修士） */
+    private Integer permission;
 }

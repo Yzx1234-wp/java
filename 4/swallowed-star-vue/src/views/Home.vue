@@ -27,7 +27,7 @@
       <span class="avatar">{{ avatarChar }}</span>
       <span class="name">{{ nickname }}</span>
       <span class="points-chip" title="查看我的主页" @click="router.push('/profile')">✦ {{ myPoints }}</span>
-      <button class="btn-admin" @click="goAdmin">
+      <button v-if="isAdmin" class="btn-admin" @click="goAdmin">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
@@ -225,18 +225,22 @@ const { show } = useToast()
 
 /* ===== 用户会话（沿用原有逻辑：token 失效自动退回登录页） ===== */
 const session = getSession()
+// 仅管理员权限（permission=0）可见「后台管理」入口；普通修士（permission=1）不可见
+const isAdmin = ref(!!(session && session.permission === 0))
 const nickname = ref((session && (session.nickname || session.username)) || '无名修士')
 const avatarChar = ref((nickname.value || '荒')[0])
 const myPoints = ref(0)
 const clock = ref('')
 let timer = null
 
-/* ===== 导航栏（功法首页 + 人物介绍 + 秘境首页 + 任务接取 + 我的主页） ===== */
+/* ===== 导航栏（功法首页 + 人物介绍 + 秘境首页 + 任务接取 + 商店兑换 + 修炼境界 + 我的主页） ===== */
 const navs = [
   { key: 'home', label: '功法首页' },
   { key: 'characters', label: '人物介绍' },
   { key: 'realms', label: '秘境首页' },
   { key: 'quests', label: '任务接取' },
+  { key: 'shop', label: '商店兑换' },
+  { key: 'cultivation', label: '修炼境界' },
   { key: 'profile', label: '我的主页' }
 ]
 const activeNav = ref('home')
@@ -252,6 +256,14 @@ function onNav(item) {
   }
   if (item.key === 'quests') {
     router.push('/quests')
+    return
+  }
+  if (item.key === 'shop') {
+    router.push('/shop')
+    return
+  }
+  if (item.key === 'cultivation') {
+    router.push('/cultivation')
     return
   }
   if (item.key === 'profile') {
@@ -428,6 +440,7 @@ onMounted(async () => {
   }
   nickname.value = me.nickname || me.username || nickname.value
   avatarChar.value = (nickname.value || '荒')[0]
+  isAdmin.value = me.permission === 0
 
   // 导航栏总积分（失败不致命）
   try {

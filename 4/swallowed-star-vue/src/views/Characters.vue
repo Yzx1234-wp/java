@@ -15,6 +15,8 @@
       <button class="nav-item active">人物介绍</button>
       <button class="nav-item" @click="goRealms">秘境首页</button>
       <button class="nav-item" @click="goQuests">任务接取</button>
+      <button class="nav-item" @click="goShop">商店兑换</button>
+      <button class="nav-item" @click="goCultivation">修炼境界</button>
       <button class="nav-item" @click="goProfile">我的主页</button>
     </div>
 
@@ -434,6 +436,8 @@ onBeforeUnmount(() => clearInterval(timer))
 const goHome = () => router.push('/home')
 const goRealms = () => router.push('/realms')
 const goQuests = () => router.push('/quests')
+const goShop = () => router.push('/shop')
+const goCultivation = () => router.push('/cultivation')
 const goProfile = () => router.push('/profile')
 const goLogout = () => { logout(); router.push('/login') }
 </script>

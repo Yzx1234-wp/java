@@ -22,8 +22,14 @@ public class ProfileVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
-    /** 总积分（后台已确认完成的任务 + 秘境积分之和） */
+    /** 当前可用积分（= 累计获得 - 商店兑换消耗） */
     private Integer totalPoints;
+
+    /** 历史累计获得积分（任务 + 秘境，只增不减，成绩徽章按此判定） */
+    private Integer earnedPoints;
+
+    /** 商店兑换已消耗积分 */
+    private Integer spentPoints;
 
     /** 已接任务数 */
     private Integer questCount;
@@ -40,7 +46,7 @@ public class ProfileVO {
     /** 已点亮成就数 */
     private Integer badgeCount;
 
-    /** 当前修炼境界（按总积分划定） */
+    /** 当前修炼境界（由「修炼境界」修为体系决定，与积分无关） */
     private Tier tier;
 
     /** 成就徽章（含未点亮的） */
@@ -55,12 +61,20 @@ public class ProfileVO {
         private String name;
         /** 境界序号（从 0 起） */
         private Integer index;
-        /** 距下一境进度（0-100，已是最高境则为 100） */
+        /** 本境修为进度（0-100，已是最高境则为 100） */
         private Double progress;
         /** 下一境界名（已是最高境则为 null） */
         private String next;
-        /** 晋升下一境界所需总积分 */
+        /** 本境已积修为 */
+        private Integer exp;
+        /** 冲击下一境所需修为 */
+        private Integer need;
+        /** 距突破还需修为 */
+        private Integer remain;
+        /** 兼容旧字段：等同 need（突破所需修为） */
         private Integer nextPoints;
+        /** 是否已至最高境 */
+        private Boolean top;
     }
 
     @Data

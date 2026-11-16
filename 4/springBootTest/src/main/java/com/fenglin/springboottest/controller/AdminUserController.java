@@ -5,6 +5,7 @@ import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.common.Validators;
 import com.fenglin.springboottest.controller.dto.AdminUserVO;
 import com.fenglin.springboottest.controller.dto.PasswordRequest;
+import com.fenglin.springboottest.controller.dto.PermissionRequest;
 import com.fenglin.springboottest.entity.QuestAccept;
 import com.fenglin.springboottest.entity.RealmSignup;
 import com.fenglin.springboottest.entity.User;
@@ -14,7 +15,6 @@ import com.fenglin.springboottest.service.AdminGuard;
 import com.fenglin.springboottest.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +38,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/users")
 public class AdminUserController {
-
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     @Autowired
     private UserService userService;
@@ -98,6 +96,7 @@ public class AdminUserController {
             vo.setQuestCount(questCounts.getOrDefault(u.getUsername(), 0));
             vo.setRealmCount(realmCounts.getOrDefault(u.getUsername(), 0));
             vo.setAdmin(adminGuard.isAdmin(u.getUsername()));
+            vo.setPermission(u.getPermission() == null ? 1 : u.getPermission());
             list.add(vo);
         }
         return Result.ok(list);
@@ -130,6 +129,7 @@ public class AdminUserController {
         vo.setNickname(nickname);
         vo.setCreatedAt(old.getCreatedAt());
         vo.setAdmin(adminGuard.isAdmin(old.getUsername()));
+        vo.setPermission(old.getPermission() == null ? 1 : old.getPermission());
         return Result.ok(vo);
     }
 
@@ -151,9 +151,49 @@ public class AdminUserController {
         }
         User patch = new User();
         patch.setId(id);
-        patch.setPassword(encoder.encode(pw));
+        // 明文存储（需求要求，演示项目不做加密）
+        patch.setPassword(pw);
         userService.updateById(patch);
         return Result.ok();
+    }
+
+    /**
+     * 切换账号权限（0 管理员 / 1 默认）。
+     * 不允许收回当前登录管理员自己的权限，避免把自己锁在后台外。
+     */
+    @PutMapping("/{id}/permission")
+    public Result<AdminUserVO> changePermission(@PathVariable Long id,
+                                                @RequestBody PermissionRequest body,
+                                                HttpServletRequest request) {
+        Result<Void> auth = adminGuard.check(request);
+        if (auth != null) {
+            return Result.fail(auth.getCode(), auth.getMessage());
+        }
+        User old = userService.getById(id);
+        if (old == null) {
+            return Result.fail(404, "账号不存在，可能已被删除");
+        }
+        int permission = body == null ? -1 : (body.getPermission() == null ? -1 : body.getPermission());
+        if (permission != 0 && permission != 1) {
+            return Result.fail(400, "权限值只能是 0（管理员）或 1（默认）");
+        }
+        User me = adminGuard.currentAdmin(request);
+        if (me != null && me.getId().equals(old.getId()) && permission != 0) {
+            return Result.fail(400, "不能收回自己当前账号的管理员权限");
+        }
+        User patch = new User();
+        patch.setId(id);
+        patch.setPermission(permission);
+        userService.updateById(patch);
+
+        AdminUserVO vo = new AdminUserVO();
+        vo.setId(old.getId());
+        vo.setUsername(old.getUsername());
+        vo.setNickname(old.getNickname());
+        vo.setCreatedAt(old.getCreatedAt());
+        vo.setPermission(permission);
+        vo.setAdmin(permission == 0);
+        return Result.ok(vo);
     }
 
     /** 删除账号（连同报名 / 接取记录一起清理） */

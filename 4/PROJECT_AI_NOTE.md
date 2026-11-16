@@ -264,3 +264,132 @@
   撤销完成→积分回退；秘境报名→完成→总积分 4100→5100→撤销→4100；
 - vite build + eslint 通过（仅 4 条历史 warning）；无头 Chrome(CDP) 实测 5 个页面与记录弹窗渲染，控制台零告警；
 - 注意：本机沙箱环境变量 SERVER__PORT 会覆盖端口，手工起后端务必带 `--server.port=8081`。
+
+## 17. 修炼境界 · 问道台（2026-11-16 新增，境界与积分彻底解耦）
+
+首页导航现为六页互跳：「功法首页 / 人物介绍 / 秘境首页 / 任务接取 / 修炼境界 / 我的主页」；
+点「修炼境界」进入 `/cultivation`（有 `ss_token` 守卫）。六项导航在 ≤1280px 时隐藏时钟并收窄菜单项（style.css）。
+
+### 设计：境界怎么涨（不靠积分）
+- 修为来源只有两个，全部与积分无关：
+  1. **参悟典籍**：研读 gongfa 库典籍，按品阶得修为（绝世 200 / 绝顶 150 / 一流 110 / 上乘 80 / 中乘 55），
+     **每部典籍一生只能参悟一次**（29 部上限，unique key username+gongfa_id）；
+  2. **打坐吐纳**：30 秒冷却，每次 +（24 + 境界×6）修为，是可持续的日常积累。
+- **境界不自动上涨**：本境修为积满（各境所需 80→1920 递增，仙帝为顶）后，
+  必须本人点「冲击境界」**渡劫**；
+- 渡劫成功率 = 60% + 已参悟功法数 × 2%（上限 92%），成功晋下一境（溢出修为结转）；
+  失败不跌境界但修为折损 25%，可再蓄力重冲。
+- 「我的主页」的境界进度条同步改为这套修为口径（ProfileVO.Tier 新增 exp/need/remain/top），
+  积分再多境界也不会自动变，个人主页有「去问道台修行」入口。
+
+### 数据结构（schema.sql 第 10 节，启动幂等建表，无需迁移）
+- `user_cultivation`：username 唯一；realm_index（0=搬血…17=仙帝）、exp（本境修为）、
+  total_exp（累计）、breakthrough_count、fail_count、last_meditate_at（吐纳冷却）；
+- `gongfa_comprehend`：参悟记录，uk(username, gongfa_id) 保证一部典籍只参悟一次；
+- `cultivation_log`：参悟/吐纳/突破/失败留痕（type：COMPREHEND/MEDITATE/BREAKTHROUGH/FAIL）。
+
+### 后端（全部 /api/cultivation/*，均需登录；TokenStore 判空教训已吸取）
+- `common/CultivationLadder`：十八境阶梯、need 阈值、修为收益、成功率公式（唯一事实源）；
+- `entity/UserCultivation|GongfaComprehend|CultivationLog` + 三个 Mapper（纯 BaseMapper）；
+- `service/CultivationService(+Impl)`、`controller/CultivationController`：
+  - GET `/overview`（境界/修为/成功率/十八境 ladder/可参悟典籍列表一次带全）；
+  - POST `/comprehend` {gongfaId}（防重复参悟）、POST `/meditate`（冷却校验）、
+    POST `/breakthrough`（修为不足/最高境均友好报错）；
+  - GET `/logs?limit=`（修炼记录）。
+- 注意：DATETIME 秒级截断会让冷却多算 1 秒，cooldownLeft 已 clamp 到冷却总时长。
+
+### 前端
+- `src/api/cultivation.js`、`src/views/Cultivation.vue`（金色玄幻风：
+  境界主盘（大字境界 + 修为进度条 + 渡劫按钮呼吸光效 + 成功率）、修炼两法卡、
+  参悟典籍网格（品阶筛选 + 只看未参悟）、十八境阶梯（done/current/locked 三态）、修炼记录时间线；
+  渡劫成功整卡金光闪烁 + toast）；
+- 路由 `/cultivation`；Home/Characters/Realms/Quests/Profile 五页导航均插入「修炼境界」；
+- Profile.vue 修炼境界区块文案改为修为口径（修为圆满时提示可渡劫）。
+
+### 已实测（2026-11-16）
+- mvn package 重启 8081：curl 全链路通过——参悟《原始真解》+200 → 重复参悟被拒 →
+  渡劫成功晋「洞天境」（结余修为 120 结转）→ 吐纳 +30 → 冷却内再吐纳被拒 →
+  logs/overview 正确；未登录 401；admin 积分 4100 但境界只到洞天（积分与境界解耦验证通过）；
+- vite build + eslint 通过；无头 Chrome 实测 `/cultivation` 与 `/profile` 渲染正常
+  （截图 C:/Users/Administrator/AppData/Local/Temp/cult.png）；
+- 无头 Chrome + CDP 真实交互实测（node uitest.mjs，Runtime.evaluate 点击）：
+  参悟《以身为种》修为 150→350、卡片转「已参悟」；吐纳 +30 且按钮进入「冷却 28s」；
+  渡劫随机失败 → 修为 380→285（-95）并写入失败记录；品阶「绝世」5 张 → 勾选「只看未参悟」剩 3 张；
+  修炼记录 6 条时间线正常；1024px 下 scrollWidth=innerWidth（无横向溢出）；控制台 JS 异常 0。
+
+## 18. 后台管理 2.1 · 新增「修炼境界」模块（2026-11-16）
+
+后台从六模块扩为七模块，侧边栏在「悬赏任务」与「修士账号」之间新增「修炼境界」。
+
+### 后端（/api/admin/cultivations/*，均走 AdminGuard 管理员校验）
+- `AdminCultivationController` + `controller/dto/AdminCultivationVO`：
+  - GET `/list?keyword=`：全部账号 + 修炼档案聚合（未入门按「搬血 · 修为 0」展示，
+    profiled=false）；字段含 realmIndex/realmName/exp/need/progress/totalExp/
+    comprehendCount/breakthroughCount/failCount/lastMeditateAt/updatedAt；
+  - PUT `/{username}` body {realmIndex, exp}：演示纠错用，校验 0-17 与 0-999999，
+    调整后**回读档案**（DB ON UPDATE 刷新后的 updated_at 才准确），并写入
+    cultivation_log（type=ADMIN ·「天道法则变动」）；
+  - POST `/{username}/reset`：删除 user_cultivation + gongfa_comprehend + cultivation_log
+    （境界归零，**积分不受影响**）。
+- `GongfaComprehendMapper` 新增 countByUser（各账号参悟数）/ countAll（全站累计）。
+- `AdminOverviewController` 概览新增：cultCount（已入门修士数）、totalComprehend、totalBreakthrough、
+  totalFail、cultByRealm（十八境分布，仅列有人数的境界）。
+
+### 前端
+- `views/admin/CultivationManage.vue`（新页）：账号/昵称/当前境界胶囊/本境修为/参悟典籍/
+  破境/渡劫失败/累计修为/最近变动 + 操作「调整境界（弹窗 select 十八境 + 数字修为）」「重置修炼（危险确认）」；
+- `api/admin.js` 新增 cultivationApi；路由 `/admin/cultivations`；AdminLayout 菜单加项（图标 火苗）并标注 v2.1 · 七模块；
+- `Dashboard.vue`：修士数据统计行改为 账号/已入门修士/累计参悟/成功破境/待审核/累计积分，
+  新增整行「修士境界分布」面板（十八境 190px 多列紧凑条状图，空态提示去前台参悟）、
+  快捷入口新增「修炼境界」；
+- 前台 Cultivation.vue 修炼记录新增 ADMIN 类型图标（⚖️），后台调整可在修炼记录时间线看到。
+
+### 已实测（2026-11-16）
+- curl：list（admin 洞天/285/2 参悟）→ adjust 到尊者 exp100（progress 26.3）→ overview
+  cultCount/totalComprehend/totalBreakthrough/cultByRealm 正确 → reset（profiled=false、境界归零）→
+  adjust 回洞天 285（updatedAt 已刷新）→ 前台 logs 出现「天道法则变动」记录；
+- 前端 eslint 0 error、vite build 通过；无头 Chrome 实测后台两页：侧边栏七项齐全、
+  列表 1 行数据、概览新增统计与境界分布面板渲染正常
+  （截图 outputs/后台-修炼境界管理.png、outputs/后台-概览境界分布.png）。
+
+## 19. 商店兑换 · 大荒宝库（2026-11-16 新增，积分体系接入消耗）
+
+导航增至七项：功法首页 / 人物介绍 / 秘境首页 / 任务接取 / **商店兑换** / 修炼境界 / 我的主页。
+
+### 规则
+- 用**积分**兑换四类商品：丹药 / 法宝 / 武器 / 高级功法（共 24 件种子商品，全部《完美世界》主题）；
+- **积分口径升级为钱包制**：`可用积分 = 累计获得（任务+秘境已完成发放） - 商店兑换消耗`；
+  shop_order 表即消耗账本，quest_accept / realm_signup 的发放逻辑不动；
+- 「我的主页」「任务页」的积分徽章同步改为可用口径；成就徽章仍按**历史累计获得**判定（兑换不会熄灭成就）；
+- 部分商品限量（如飞仙石 3 件、星辰剑 2 件、原始真解 5 件），stock=0 表示不限量；
+  兑换用条件 UPDATE（`stock=0 OR sold<stock`）兜住并发抢购；
+- 未登录浏览公开；兑换 / 钱包 / 记录需登录。
+
+### 后端
+- schema.sql 第 11 节：`shop_item`（商品）+ `shop_order`（兑换记录=消耗账本）；data.sql 第 7 节 24 件种子；
+- 实体 `ShopItem`（owned/remain/soldOut/affordable 为查询时补充字段）、`ShopOrder`；
+  Mapper `ShopItemMapper`（countByCategory / increaseSold 条件更新）、`ShopOrderMapper`（sumSpent 等）；
+- `ShopService(+Impl)`：search（关键词/分类/排序 default=热门优先+价格升/priceAsc/priceDesc，
+  填充 owned、soldOut、affordable）、categories、wallet（earned/spent/available/orderCount）、
+  redeem（事务：积分校验→库存校验→条件扣库存→写 order）、myOrders、spentPoints；
+- `ShopController`：`/api/shop/list|categories|wallet|redeem|orders`；
+- 积分口径联动：`ProfileServiceImpl`（totalPoints=可用，新增 earnedPoints/spentPoints，徽章按 earned）、
+  `QuestController /quests/points`（新增 earned/spent）。
+
+### 前端
+- `views/Shop.vue`（新页）：宝库题头+搜索+热门宝物快捷、积分钱包卡（可用/累计/已消耗/次数）、
+  品类+排序筛选、商品网格（品阶徽章/分类色/限量余量/已兑换件数/买不起置灰「积分不足」）、
+  兑换确认弹层（所需积分/可用余额/兑换后余额/库存）、我的兑换记录时间线；
+- `api/shop.js`；路由 `/shop`（登录守卫）；六页导航插入「商店兑换」（任务接取之后）；
+- 我的主页：积分卡改「可用积分 · 累计 X / 已兑 Y」，名帖加「宝库已兑」chip + 「去宝库兑换」入口；
+- style.css：新增 ≤1180px 导航再收窄规则（七项防挤压）。
+
+### 已实测（2026-11-16）
+- curl 全链路：categories（24 件四类）→ list 排序 → 兑换乾坤袋 -200（wallet 3900）→ orders/owned=1 →
+  profile（total 3900/earned 4100/spent 200，徽章数不变）→ quests/points 同口径 →
+  未登录 401 → 新号积分不足报「还差 110 积分」→ 临时限量商品二次兑换报「已被兑完」（条件更新兜并发验证通过）→
+  测试数据与临时账号已清理；
+- 无头 Chrome + CDP 真实点击：分类筛选 24→6、价格排序首卡「淬体丹 60」、卡片兑换→弹层→确认兑换
+  （toast「兑换成功 · 花费 60 积分」、钱包 3900→3840、兑换记录 +1、卡片转「已兑换 1 件」）、
+  七页导航回归全 PASS、1440/1024 无横向溢出、JS 异常 0（favicon 404 为项目历史遗留）；
+- eslint 0 error、vite build 通过；后端已重新打包并在 8081 运行。

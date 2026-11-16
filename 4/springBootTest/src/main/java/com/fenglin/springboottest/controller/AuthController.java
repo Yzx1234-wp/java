@@ -52,7 +52,8 @@ public class AuthController {
             return Result.fail("账号或修行密钥不正确");
         }
         String token = tokenStore.createToken(user.getId());
-        return Result.ok(new LoginResponse(token, user.getUsername(), user.getNickname()));
+        return Result.ok(new LoginResponse(token, user.getUsername(), user.getNickname(),
+                user.getPermission() == null ? 1 : user.getPermission()));
     }
 
     /** 获取当前登录用户信息 */
@@ -70,7 +71,8 @@ public class AuthController {
         if (user == null) {
             return Result.fail(401, "用户不存在");
         }
-        return Result.ok(new LoginResponse(token, user.getUsername(), user.getNickname()));
+        return Result.ok(new LoginResponse(token, user.getUsername(), user.getNickname(),
+                user.getPermission() == null ? 1 : user.getPermission()));
     }
 
     /** 注销 */

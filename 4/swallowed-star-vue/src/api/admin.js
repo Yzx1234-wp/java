@@ -162,5 +162,19 @@ export const userApi = {
   list: (query) => request('GET', '/admin/users/list' + qs(query)),
   rename: (id, nickname) => request('PUT', '/admin/users/' + id, { nickname }),
   resetPassword: (id, password) => request('PUT', `/admin/users/${id}/password`, { password }),
+  // 切换权限：0 管理员 / 1 默认（普通修士）
+  setPermission: (id, permission) => request('PUT', `/admin/users/${id}/permission`, { permission }),
   remove: (id) => request('DELETE', '/admin/users/' + id)
+}
+
+// ---------- 修士境界（修炼档案） ----------
+
+export const cultivationApi = {
+  list: (query) => request('GET', '/admin/cultivations/list' + qs(query)),
+  // 调整境界/修为（演示纠错，会写入「天道干预」修炼记录）
+  adjust: (username, realmIndex, exp) =>
+    request('PUT', '/admin/cultivations/' + encodeURIComponent(username), { realmIndex, exp }),
+  // 重置修炼档案（清除档案/参悟/记录，从搬血重新开始）
+  reset: (username) =>
+    request('POST', '/admin/cultivations/' + encodeURIComponent(username) + '/reset')
 }

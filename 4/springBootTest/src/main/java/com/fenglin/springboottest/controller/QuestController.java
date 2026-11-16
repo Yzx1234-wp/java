@@ -7,6 +7,7 @@ import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.service.QuestService;
+import com.fenglin.springboottest.service.ShopService;
 import com.fenglin.springboottest.service.TokenStore;
 import com.fenglin.springboottest.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,9 @@ public class QuestController {
 
     @Autowired
     private RealmSignupMapper signupMapper;
+
+    @Autowired
+    private ShopService shopService;
 
     /**
      * 任务检索
@@ -84,7 +88,7 @@ public class QuestController {
         return Result.ok(quest);
     }
 
-    /** 我的总积分（任务 + 秘境，仅统计后台已确认完成的记录；需登录） */
+    /** 我的积分（任务 + 秘境累计发放，减去商店兑换消耗；需登录） */
     @GetMapping("/points")
     public Result<Map<String, Object>> points(
             @RequestHeader(value = "Authorization", required = false) String auth) {
@@ -94,9 +98,13 @@ public class QuestController {
         }
         int questPoints = questService.myPoints(username);
         int realmPoints = signupMapper.sumPoints(username);
+        int spent = shopService.spentPoints(username);
+        int earned = questPoints + realmPoints;
         return Result.ok(Map.of(
                 "username", username,
-                "points", questPoints + realmPoints,
+                "points", Math.max(0, earned - spent),
+                "earned", earned,
+                "spent", spent,
                 "questPoints", questPoints,
                 "realmPoints", realmPoints));
     }

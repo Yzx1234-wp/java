@@ -41,14 +41,19 @@
         <em class="hint">已注册用户</em>
       </div>
       <div class="adm-stat">
-        <b>{{ n('signupCount') }}</b>
-        <span>秘境报名</span>
-        <em class="hint">累计报名记录</em>
+        <b>{{ n('cultCount') }}</b>
+        <span>已入门修士</span>
+        <em class="hint">有修炼档案者</em>
       </div>
       <div class="adm-stat">
-        <b>{{ n('acceptCount') }}</b>
-        <span>任务接取</span>
-        <em class="hint">累计接取记录</em>
+        <b>{{ n('totalComprehend') }}</b>
+        <span>累计参悟</span>
+        <em class="hint">修为主要来源</em>
+      </div>
+      <div class="adm-stat">
+        <b>{{ n('totalBreakthrough') }}</b>
+        <span>成功破境</span>
+        <em class="hint">渡劫成功次数</em>
       </div>
       <div class="adm-stat">
         <b>{{ n('pendingCount') }}</b>
@@ -86,6 +91,19 @@
         </div>
         <p v-else class="adm-feed-empty">暂无数据</p>
       </div>
+    </div>
+
+    <!-- 修士境界分布（修炼境界模块） -->
+    <div class="adm-panel" style="margin-bottom:14px">
+      <h4>修士境界分布 <span class="bar-hint">按十八境统计已入门修士</span></h4>
+      <div v-if="bars(cultByRealm).length" class="realm-bar-grid">
+        <div v-for="b in bars(cultByRealm)" :key="b.name" class="adm-bar-row">
+          <span>{{ b.name }}</span>
+          <span class="adm-bar"><i :style="{ width: b.pct + '%' }"></i></span>
+          <b>{{ b.cnt }}</b>
+        </div>
+      </div>
+      <p v-else class="adm-feed-empty">还没有修士入门 · 前台「修炼境界」页参悟典籍后即建档</p>
     </div>
 
     <div class="adm-two-col">
@@ -139,6 +157,7 @@ const data = ref({})
 
 const gongfaByCat = ref([])
 const realmByGrade = ref([])
+const cultByRealm = ref([])
 const recentSignups = ref([])
 const recentAccepts = ref([])
 
@@ -146,6 +165,7 @@ const quicks = [
   { path: '/admin/gongfa', label: '新增功法', hint: '扩充大荒功法库', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffe08a" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' },
   { path: '/admin/characters', label: '维护人物志', hint: '人物介绍页数据', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8ce8b8" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.4 3.1-5.6 7-5.6s7 2.2 7 5.6"/></svg>' },
   { path: '/admin/realms', label: '秘境与报名', hint: '查看报名记录', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffe08a" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/></svg>' },
+  { path: '/admin/cultivations', label: '修炼境界', hint: '调整境界 / 重置修炼', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8ce8b8" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4"/><path d="M12 6c-4 2-6 5.5-6 9a6 6 0 0 0 12 0c0-3.5-2-7-6-9z"/></svg>' },
   { path: '/admin/users', label: '修士账号', hint: '重置密码 / 清理账号', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff9d7a" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/></svg>' }
 ]
 
@@ -169,6 +189,7 @@ async function load() {
     data.value = res.data || {}
     gongfaByCat.value = data.value.gongfaByCat || []
     realmByGrade.value = data.value.realmByGrade || []
+    cultByRealm.value = data.value.cultByRealm || []
     recentSignups.value = data.value.recentSignups || []
     recentAccepts.value = data.value.recentAccepts || []
   } catch (e) {
@@ -185,3 +206,13 @@ async function load() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+/* 修士境界分布：十八境较多，用多列紧凑排布 */
+.realm-bar-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px 22px;
+}
+.bar-hint{
+  margin-left:8px;font-size:11px;color:rgba(179,166,132,.7);letter-spacing:1px;font-weight:400;
+}
+</style>

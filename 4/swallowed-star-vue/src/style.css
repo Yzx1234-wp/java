@@ -446,6 +446,17 @@ body{
 .empty-box .big{font-size:34px;display:block;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(140,232,184,.4))}
 .retry-row{margin-top:16px}
 
+/* 导航增至七项（含「商店兑换」「修炼境界」）后防挤压：1280 以下隐藏时钟并收窄菜单项 */
+@media (max-width:1280px){
+  .topnav .clock{display:none}
+  .nav-item{padding:8px 11px;font-size:13px}
+}
+@media (max-width:1180px){
+  .nav-menu{gap:2px;margin-left:2px}
+  .nav-item{padding:8px 9px;font-size:12.5px;letter-spacing:0}
+  .nav-user{gap:7px}
+}
+
 @media (max-width:760px){
   .topnav{padding:0 14px;gap:10px}
   .nav-menu{display:none}

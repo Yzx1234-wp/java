@@ -7,8 +7,9 @@
 CREATE TABLE IF NOT EXISTS star_user (
   id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
   username    VARCHAR(32)  NOT NULL                COMMENT '账号',
-  password    VARCHAR(128) NOT NULL                COMMENT '密码（BCrypt 加密存储）',
+  password    VARCHAR(128) NOT NULL                COMMENT '密码（明文存储，演示项目不做加密）',
   nickname    VARCHAR(64)  DEFAULT NULL            COMMENT '昵称',
+  permission  TINYINT      NOT NULL DEFAULT 1      COMMENT '权限：0 管理员 / 1 默认（普通修士）',
   created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_username (username)
@@ -239,3 +240,113 @@ SET @ddl := IF(@need_realm_status = 0,
 PREPARE pw_stmt FROM @ddl;
 EXECUTE pw_stmt;
 DEALLOCATE PREPARE pw_stmt;
+
+-- ============================================================
+-- 12) 用户权限列迁移（2026-11-16 新增）
+--     star_user 补 permission 列（0 管理员 / 1 默认），旧库补列后存量账号
+--     均为 1（普通修士），管理员账号由 DataInitializer 启动时强制置 0。
+-- ============================================================
+
+SET @cnt := (SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'star_user' AND COLUMN_NAME = 'permission');
+SET @ddl := IF(@cnt = 0,
+  'ALTER TABLE star_user ADD COLUMN permission TINYINT NOT NULL DEFAULT 1 COMMENT ''权限：0 管理员 / 1 默认（普通修士）''',
+  'DO 0');
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- 顺带把旧库的密码列注释改为「明文存储」（列类型不变，无需动数据，DataInitializer 会做明文迁移）
+SET @ddl := 'ALTER TABLE star_user MODIFY COLUMN password VARCHAR(128) NOT NULL COMMENT ''密码（明文存储，演示项目不做加密）''';
+PREPARE pw_stmt FROM @ddl;
+EXECUTE pw_stmt;
+DEALLOCATE PREPARE pw_stmt;
+
+-- ============================================================
+-- 10) 修炼境界：修为 / 参悟 / 渡劫突破（2026-11-16 新增）
+--     境界不由积分决定：修为只来自「参悟功法」与「打坐吐纳」，
+--     修为积满后需本人主动「冲击境界」渡劫，成功才晋升，失败折损修为。
+-- ============================================================
+
+-- 10.1) 修士修炼档案（一人一条，首次访问修炼境界页时创建）
+CREATE TABLE IF NOT EXISTS user_cultivation (
+  id                 BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  username           VARCHAR(32) NOT NULL                COMMENT '账号',
+  realm_index        INT         NOT NULL DEFAULT 0      COMMENT '当前境界序号（0=搬血 … 17=仙帝）',
+  exp                INT         NOT NULL DEFAULT 0      COMMENT '本境已积修为（突破后结转溢出部分）',
+  total_exp          INT         NOT NULL DEFAULT 0      COMMENT '历史累计修为（只增不减，用于展示）',
+  breakthrough_count INT         NOT NULL DEFAULT 0      COMMENT '成功突破次数',
+  fail_count         INT         NOT NULL DEFAULT 0      COMMENT '渡劫失败次数',
+  last_meditate_at   DATETIME    DEFAULT NULL            COMMENT '上次打坐吐纳时间（冷却判定）',
+  created_at         DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at         DATETIME    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_cult_user (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='修士修炼档案（境界/修为）';
+
+-- 10.2) 功法参悟记录（每部典籍每人仅可参悟一次，是修为的主要来源）
+CREATE TABLE IF NOT EXISTS gongfa_comprehend (
+  id             BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  username       VARCHAR(32) NOT NULL                COMMENT '账号',
+  gongfa_id      BIGINT      NOT NULL                COMMENT '功法 id',
+  exp_gain       INT         NOT NULL DEFAULT 0      COMMENT '本次参悟所得修为',
+  comprehended_at DATETIME   DEFAULT CURRENT_TIMESTAMP COMMENT '参悟时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_cult_gongfa (username, gongfa_id),
+  KEY idx_cult_user (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='功法参悟记录';
+
+-- 10.3) 修炼记录（参悟 / 吐纳 / 突破 / 失败 留痕，页面时间线数据源）
+CREATE TABLE IF NOT EXISTS cultivation_log (
+  id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  username    VARCHAR(32) NOT NULL                COMMENT '账号',
+  type        VARCHAR(16) NOT NULL                COMMENT '类型：COMPREHEND 参悟 / MEDITATE 吐纳 / BREAKTHROUGH 突破 / FAIL 失败',
+  title       VARCHAR(120) NOT NULL               COMMENT '标题',
+  detail      VARCHAR(255) DEFAULT NULL           COMMENT '细节说明',
+  exp_delta   INT         NOT NULL DEFAULT 0      COMMENT '修为变化（可为负）',
+  realm_index INT         NOT NULL DEFAULT 0      COMMENT '发生时的境界序号',
+  created_at  DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '发生时间',
+  PRIMARY KEY (id),
+  KEY idx_cult_log_user (username, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='修炼记录';
+
+-- ============================================================
+-- 11) 商店兑换（2026-11-16 新增）
+--     用积分兑换丹药 / 法宝 / 武器 / 高级功法；
+--     积分口径改为「可用积分 = 累计获得 - 已兑换消耗」，由 shop_order 记账，
+--     quest_accept / realm_signup 的发放记录仍是积分来源，不做修改。
+-- ============================================================
+
+-- 11.1) 宝库商品（丹药 / 法宝 / 武器 / 高级功法）
+CREATE TABLE IF NOT EXISTS shop_item (
+  id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  name        VARCHAR(64)  NOT NULL                COMMENT '商品名称',
+  category    VARCHAR(16)  NOT NULL                COMMENT '分类：丹药 / 法宝 / 武器 / 高级功法',
+  grade       VARCHAR(16)  NOT NULL DEFAULT '上乘'  COMMENT '品阶（绝世/绝顶/一流/上乘/中乘）',
+  glyph       VARCHAR(16)  DEFAULT NULL            COMMENT '卡面图标',
+  price       INT          NOT NULL DEFAULT 0      COMMENT '兑换所需积分',
+  stock       INT          NOT NULL DEFAULT 0      COMMENT '库存件数（0 表示不限量）',
+  sold        INT          NOT NULL DEFAULT 0      COMMENT '已兑换件数',
+  description VARCHAR(600) DEFAULT NULL            COMMENT '商品简介',
+  sort_no     INT          NOT NULL DEFAULT 0      COMMENT '排序号（越小越靠前）',
+  is_hot      TINYINT      NOT NULL DEFAULT 0      COMMENT '是否热门：1 是 0 否',
+  created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_shop_name (name),
+  KEY idx_shop_cat (category),
+  KEY idx_shop_price (price)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='大荒宝库商品表';
+
+-- 11.2) 兑换记录（同时是积分消耗账本：可用积分 = 累计获得 - 本表 price 之和）
+CREATE TABLE IF NOT EXISTS shop_order (
+  id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  username    VARCHAR(32) NOT NULL                COMMENT '兑换账号',
+  item_id     BIGINT      NOT NULL                COMMENT '商品 id',
+  item_name   VARCHAR(64) NOT NULL                COMMENT '商品名称（留档，商品改名不影响记录）',
+  category    VARCHAR(16) NOT NULL                COMMENT '商品分类（留档）',
+  price       INT         NOT NULL DEFAULT 0      COMMENT '实际扣除的积分',
+  created_at  DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '兑换时间',
+  PRIMARY KEY (id),
+  KEY idx_shop_order_user (username, created_at),
+  KEY idx_shop_order_item (item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='宝库兑换记录（积分消耗账本）';

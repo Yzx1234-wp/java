@@ -1,17 +1,22 @@
 package com.fenglin.springboottest.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fenglin.springboottest.common.CultivationLadder;
 import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.QuestAccept;
 import com.fenglin.springboottest.entity.RealmSignup;
 import com.fenglin.springboottest.entity.SecretRealm;
 import com.fenglin.springboottest.entity.User;
+import com.fenglin.springboottest.entity.UserCultivation;
+import com.fenglin.springboottest.mapper.CultivationLogMapper;
+import com.fenglin.springboottest.mapper.GongfaComprehendMapper;
 import com.fenglin.springboottest.mapper.GongfaMapper;
 import com.fenglin.springboottest.mapper.QuestAcceptMapper;
 import com.fenglin.springboottest.mapper.QuestMapper;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.mapper.SecretRealmMapper;
+import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.WorldCharacterMapper;
 import com.fenglin.springboottest.service.AdminGuard;
 import com.fenglin.springboottest.service.CharacterService;
@@ -77,6 +82,15 @@ public class AdminOverviewController {
     private QuestAcceptMapper acceptMapper;
 
     @Autowired
+    private UserCultivationMapper cultivationMapper;
+
+    @Autowired
+    private GongfaComprehendMapper comprehendMapper;
+
+    @Autowired
+    private CultivationLogMapper cultivationLogMapper;
+
+    @Autowired
     private AdminGuard adminGuard;
 
     /** 当前管理员信息（前端进入后台时校验令牌用） */
@@ -135,6 +149,29 @@ public class AdminOverviewController {
         m.put("characterByGrade", characterMapper.countByGrade());
         m.put("realmByGrade", realmMapper.countByGrade());
         m.put("questByGrade", questMapper.countByGrade());
+
+        // 修炼境界（前台「修炼境界」页配套统计）
+        List<UserCultivation> profiles = cultivationMapper.selectList(null);
+        m.put("cultCount", profiles.size());
+        int totalComprehend = comprehendMapper.countAll();
+        m.put("totalComprehend", totalComprehend);
+        m.put("totalBreakthrough", profiles.stream()
+                .mapToInt(p -> p.getBreakthroughCount() == null ? 0 : p.getBreakthroughCount()).sum());
+        m.put("totalFail", profiles.stream()
+                .mapToInt(p -> p.getFailCount() == null ? 0 : p.getFailCount()).sum());
+        List<Map<String, Object>> byRealm = new ArrayList<>();
+        Map<Integer, Long> counted = profiles.stream().collect(java.util.stream.Collectors.groupingBy(
+                p -> p.getRealmIndex() == null ? 0 : p.getRealmIndex(), java.util.stream.Collectors.counting()));
+        for (int i = 0; i < CultivationLadder.size(); i++) {
+            long cnt = counted.getOrDefault(i, 0L);
+            if (cnt > 0) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("name", CultivationLadder.name(i));
+                item.put("cnt", cnt);
+                byRealm.add(item);
+            }
+        }
+        m.put("cultByRealm", byRealm);
 
         m.put("recentSignups", recentSignups());
         m.put("recentAccepts", recentAccepts());

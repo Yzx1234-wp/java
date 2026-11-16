@@ -15,6 +15,8 @@
       <button class="nav-item" @click="goCharacters">人物介绍</button>
       <button class="nav-item" @click="goRealms">秘境首页</button>
       <button class="nav-item" @click="goQuests">任务接取</button>
+      <button class="nav-item" @click="goShop">商店兑换</button>
+      <button class="nav-item" @click="goCultivation">修炼境界</button>
       <button class="nav-item active">我的主页</button>
     </div>
 
@@ -52,7 +54,8 @@
           </p>
           <div class="id-chips">
             <span class="tier-chip" :style="tierChipStyle">{{ tierName }}境</span>
-            <span class="stat-chip">✦ {{ summary.totalPoints || 0 }} 积分</span>
+            <span class="stat-chip">✦ {{ summary.totalPoints || 0 }} 可用积分</span>
+            <span v-if="summary.spentPoints" class="stat-chip spent">宝库已兑 {{ summary.spentPoints }}</span>
           </div>
         </div>
       </div>
@@ -60,9 +63,9 @@
 
     <!-- 统计条 -->
     <section class="stat-zone">
-      <div class="stat-card">
+      <div class="stat-card" title="累计获得 减去 宝库兑换消耗">
         <b>{{ summary.totalPoints || 0 }}</b>
-        <span>总积分</span>
+        <span>可用积分 · 累计 {{ summary.earnedPoints || 0 }} / 已兑 {{ summary.spentPoints || 0 }}</span>
       </div>
       <div class="stat-card jade">
         <b>{{ summary.questCount || 0 }}</b>
@@ -81,22 +84,27 @@
     <div class="columns">
       <!-- 左列：修炼境界 + 成就徽章 -->
       <div class="col-left">
-        <!-- 修炼境界 -->
+        <!-- 修炼境界（由问道台的修为体系决定，与积分无关） -->
         <section class="panel">
           <h3 class="panel-title">✦ 修炼境界</h3>
           <div class="tier-zone">
             <div class="tier-now">
               <span class="tier-name" :style="tierNameStyle">{{ tierName }}</span>
-              <span class="tier-sub" v-if="tierNext">距「{{ tierNext.next }}境」还差 {{ remainPoints }} 积分</span>
-              <span class="tier-sub" v-else>已至大荒之巅 · 独断万古</span>
+              <span v-if="!tierIsTop" class="tier-sub">{{ tierRemain > 0 ? `距「${tierNextName}境」还差 ${tierRemain} 修为` : `修为圆满 · 可赴问道台冲击「${tierNextName}境」` }}</span>
+              <span v-else class="tier-sub">已至大荒之巅 · 独断万古</span>
             </div>
             <div class="tier-bar">
               <div class="tier-fill" :style="{ width: (tierProgress || 0) + '%' }"></div>
             </div>
             <div class="tier-scale">
-              <span>{{ tierName }}境</span>
-              <span v-if="tierNext">{{ tierNext.next }}境 · {{ tierNext.nextPoints }} 分</span>
-              <span v-else>15000 分</span>
+              <span>{{ tierName }}境 · 修为 {{ tierExp }}{{ tierIsTop ? '' : ' / ' + tierNeed }}</span>
+              <span v-if="!tierIsTop">{{ tierNextName }}境 · 需 {{ tierNeed }} 修为</span>
+              <span v-else>十八境之巅</span>
+            </div>
+            <div class="tier-note">
+              境界不随积分上涨 · 修为靠参悟典籍与打坐吐纳积累，圆满后须亲赴问道台渡劫
+              <button class="tier-go" @click="goCultivation">去问道台修行 →</button>
+              <button class="tier-go" @click="goShop">去宝库兑换 →</button>
             </div>
           </div>
         </section>
@@ -229,15 +237,14 @@ const tabs = computed(() => [
   { key: 'acts', label: '修炼动态', count: activities.value.length }
 ])
 
-/* ===== 境界相关 ===== */
+/* ===== 境界相关（口径来自「修炼境界」修为体系，与积分无关） ===== */
 const tierName = computed(() => (summary.value.tier && summary.value.tier.name) || '搬血')
-const tierNext = computed(() => summary.value.tier || null)
+const tierNextName = computed(() => (summary.value.tier && summary.value.tier.next) || '洞天')
 const tierProgress = computed(() => (summary.value.tier && summary.value.tier.progress) || 0)
-const remainPoints = computed(() => {
-  const t = summary.value.tier
-  if (!t || !t.nextPoints) return 0
-  return Math.max(0, t.nextPoints - (summary.value.totalPoints || 0))
-})
+const tierExp = computed(() => (summary.value.tier && summary.value.tier.exp) || 0)
+const tierNeed = computed(() => (summary.value.tier && summary.value.tier.need) || 0)
+const tierRemain = computed(() => (summary.value.tier && summary.value.tier.remain) || 0)
+const tierIsTop = computed(() => !!(summary.value.tier && summary.value.tier.top))
 const joinedAt = computed(() => {
   const t = summary.value.createdAt
   return t ? String(t).slice(0, 10) : '太古之前'
@@ -331,6 +338,8 @@ const goHome = () => router.push('/home')
 const goCharacters = () => router.push('/characters')
 const goRealms = () => router.push('/realms')
 const goQuests = () => router.push('/quests')
+const goShop = () => router.push('/shop')
+const goCultivation = () => router.push('/cultivation')
 const goLogout = () => { logout(); router.push('/login') }
 </script>
 
@@ -396,6 +405,7 @@ const goLogout = () => { logout(); router.push('/login') }
   padding:4px 14px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:2px;
 }
 .stat-chip{color:var(--cyan);border:1px solid rgba(140,232,184,.4);background:rgba(140,232,184,.08)}
+.stat-chip.spent{color:#ffb49a;border-color:rgba(255,157,122,.4);background:rgba(255,157,122,.08)}
 
 /* ===== 统计条 ===== */
 .stat-zone{
@@ -460,6 +470,16 @@ const goLogout = () => { logout(); router.push('/login') }
   display:flex;justify-content:space-between;margin-top:8px;
   font-size:11px;color:var(--muted);letter-spacing:1px;
 }
+.tier-note{
+  margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,214,130,.16);
+  font-size:11.5px;line-height:1.85;color:rgba(179,166,132,.85);letter-spacing:.5px;
+}
+.tier-go{
+  display:inline-block;margin-top:10px;padding:6px 14px;border-radius:9px;cursor:pointer;
+  font-family:inherit;font-size:11.5px;letter-spacing:1px;font-weight:700;color:var(--gold);
+  background:rgba(255,224,138,.08);border:1px solid rgba(255,224,138,.38);transition:.2s;
+}
+.tier-go:hover{background:rgba(255,224,138,.18);box-shadow:0 0 14px rgba(255,224,138,.25)}
 
 /* ===== 成就徽章 ===== */
 .badge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
