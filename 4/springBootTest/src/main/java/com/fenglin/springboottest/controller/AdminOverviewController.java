@@ -16,6 +16,8 @@ import com.fenglin.springboottest.mapper.QuestAcceptMapper;
 import com.fenglin.springboottest.mapper.QuestMapper;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.mapper.SecretRealmMapper;
+import com.fenglin.springboottest.mapper.ShopItemMapper;
+import com.fenglin.springboottest.mapper.ShopOrderMapper;
 import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.WorldCharacterMapper;
 import com.fenglin.springboottest.service.AdminGuard;
@@ -91,6 +93,12 @@ public class AdminOverviewController {
     private CultivationLogMapper cultivationLogMapper;
 
     @Autowired
+    private ShopItemMapper shopItemMapper;
+
+    @Autowired
+    private ShopOrderMapper shopOrderMapper;
+
+    @Autowired
     private AdminGuard adminGuard;
 
     /** 当前管理员信息（前端进入后台时校验令牌用） */
@@ -149,6 +157,12 @@ public class AdminOverviewController {
         m.put("characterByGrade", characterMapper.countByGrade());
         m.put("realmByGrade", realmMapper.countByGrade());
         m.put("questByGrade", questMapper.countByGrade());
+
+        // 兑换商店（大荒宝库）统计
+        Long shopItemCount = shopItemMapper.selectCount(null);
+        m.put("shopItemCount", shopItemCount == null ? 0 : shopItemCount);
+        m.put("shopOrderCount", shopOrderMapper.selectCount(null));
+        m.put("shopSpentTotal", shopOrderMapper.sumAllSpent());
 
         // 修炼境界（前台「修炼境界」页配套统计）
         List<UserCultivation> profiles = cultivationMapper.selectList(null);

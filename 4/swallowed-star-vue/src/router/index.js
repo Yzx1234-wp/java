@@ -15,6 +15,7 @@ import AdminGongfa from '../views/admin/GongfaManage.vue'
 import AdminCharacters from '../views/admin/CharacterManage.vue'
 import AdminRealms from '../views/admin/RealmManage.vue'
 import AdminQuests from '../views/admin/QuestManage.vue'
+import AdminShop from '../views/admin/ShopManage.vue'
 import AdminCultivations from '../views/admin/CultivationManage.vue'
 import AdminUsers from '../views/admin/UserManage.vue'
 
@@ -47,6 +48,7 @@ const routes = [
       { path: 'characters', name: 'adminCharacters', component: AdminCharacters, meta: { title: '人物管理' } },
       { path: 'realms', name: 'adminRealms', component: AdminRealms, meta: { title: '秘境管理' } },
       { path: 'quests', name: 'adminQuests', component: AdminQuests, meta: { title: '悬赏任务' } },
+      { path: 'shop', name: 'adminShop', component: AdminShop, meta: { title: '兑换商店' } },
       { path: 'cultivations', name: 'adminCultivations', component: AdminCultivations, meta: { title: '修炼境界' } },
       { path: 'users', name: 'adminUsers', component: AdminUsers, meta: { title: '修士账号' } }
     ]

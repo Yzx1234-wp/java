@@ -16,12 +16,25 @@ USE swallowed_star;
 CREATE TABLE IF NOT EXISTS star_user (
   id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
   username    VARCHAR(32)  NOT NULL                COMMENT '账号',
-  password    VARCHAR(128) NOT NULL                COMMENT '密码（BCrypt 加密存储）',
+  password    VARCHAR(128) NOT NULL                COMMENT '密码（明文存储，演示项目不做加密）',
   nickname    VARCHAR(64)  DEFAULT NULL            COMMENT '昵称',
+  permission  TINYINT      NOT NULL DEFAULT 1      COMMENT '权限：0 管理员 / 1 默认（普通修士）',
   created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='完美世界用户表';
+
+-- 3.1) 老库增量补列：permission 列不存在时自动补上（幂等）
+SET @add_permission = (
+  SELECT IF(COUNT(*) = 0,
+    'ALTER TABLE star_user ADD COLUMN permission TINYINT NOT NULL DEFAULT 1 COMMENT ''权限：0 管理员 / 1 默认（普通修士）'' AFTER nickname',
+    'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = 'swallowed_star' AND TABLE_NAME = 'star_user' AND COLUMN_NAME = 'permission'
+);
+PREPARE stmt FROM @add_permission;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 4) 功法分类字典表（首页「类别」筛选的数据源）
 CREATE TABLE IF NOT EXISTS gongfa_category (
@@ -56,7 +69,7 @@ CREATE TABLE IF NOT EXISTS gongfa (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='大荒功法典籍表';
 
 -- 6) 演示账号说明：
---    演示账号 admin / 123456 由后端在「首次启动」时自动创建（密码经 BCrypt 加密），
---    无需手动插入。如需手动插入，请使用 BCrypt 加密后的密文，例如：
---    INSERT INTO star_user (username, password, nickname)
---    VALUES ('admin', '$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', '完美世界');
+--    演示账号 admin / 123456 由后端在「首次启动」时自动创建（密码明文存储，管理员权限 permission=0），
+--    无需手动插入。手动插入示例：
+--    INSERT INTO star_user (username, password, nickname, permission)
+--    VALUES ('admin', '123456', '完美世界', 0);

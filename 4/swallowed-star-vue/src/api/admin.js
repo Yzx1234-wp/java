@@ -156,6 +156,17 @@ export const questApi = crud('/admin/quests', {
   revertAccept: (acceptId) => request('POST', `/admin/quests/accepts/${acceptId}/revert`)
 })
 
+// ---------- 大荒宝库（兑换商店：商品 + 兑换记录） ----------
+// 商品 JSON 字段与前台一致：desc / hot；stock 0 表示不限量
+
+export const shopApi = crud('/admin/shop/item', {
+  categories: () => request('GET', '/admin/shop/categories'),
+  // 全站兑换记录（keyword 模糊匹配 账号/商品名/分类）
+  orders: (keyword) => request('GET', '/admin/shop/orders' + qs(keyword ? { keyword } : {})),
+  // 删除一条兑换记录：收回该笔消耗，修士可用积分回升，商品已售件数同步减一
+  removeOrder: (orderId) => request('DELETE', `/admin/shop/orders/${orderId}`)
+})
+
 // ---------- 修士账号 ----------
 
 export const userApi = {
