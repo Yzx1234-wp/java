@@ -6,6 +6,7 @@ import com.fenglin.springboottest.controller.dto.QuestAcceptRequest;
 import com.fenglin.springboottest.entity.Quest;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
+import com.fenglin.springboottest.service.FriendService;
 import com.fenglin.springboottest.service.QuestService;
 import com.fenglin.springboottest.service.ShopService;
 import com.fenglin.springboottest.service.TokenStore;
@@ -48,6 +49,9 @@ public class QuestController {
     @Autowired
     private ShopService shopService;
 
+    @Autowired
+    private FriendService friendService;
+
     /**
      * 任务检索
      *
@@ -88,7 +92,7 @@ public class QuestController {
         return Result.ok(quest);
     }
 
-    /** 我的积分（任务 + 秘境累计发放，减去商店兑换消耗；需登录） */
+    /** 我的积分（任务 + 秘境累计发放 + 好友对战净得，减去商店兑换消耗；需登录） */
     @GetMapping("/points")
     public Result<Map<String, Object>> points(
             @RequestHeader(value = "Authorization", required = false) String auth) {
@@ -99,12 +103,14 @@ public class QuestController {
         int questPoints = questService.myPoints(username);
         int realmPoints = signupMapper.sumPoints(username);
         int spent = shopService.spentPoints(username);
+        int battleDelta = friendService.battleDelta(username);
         int earned = questPoints + realmPoints;
         return Result.ok(Map.of(
                 "username", username,
-                "points", Math.max(0, earned - spent),
+                "points", Math.max(0, earned + battleDelta - spent),
                 "earned", earned,
                 "spent", spent,
+                "battleDelta", battleDelta,
                 "questPoints", questPoints,
                 "realmPoints", realmPoints));
     }

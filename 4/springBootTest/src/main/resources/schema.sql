@@ -350,3 +350,61 @@ CREATE TABLE IF NOT EXISTS shop_order (
   KEY idx_shop_order_user (username, created_at),
   KEY idx_shop_order_item (item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='宝库兑换记录（积分消耗账本）';
+
+-- ============================================================
+-- 13) 好友 / 聊天 / 好友对战（2026-11-20 新增）
+--     好友申请通过后双向写 friend；聊天为站内私信（轮询拉取）；
+--     对战注金口径：可用积分 = 任务/秘境累计 + 对战胜负净得 - 兑换消耗，
+--     friend_battle.finished 胜负直接按 stake 计入净得。
+-- ============================================================
+
+-- 13.1) 好友关系（双向各一行，便于按 owner 直接查列表）
+CREATE TABLE IF NOT EXISTS friend (
+  id         BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  owner      VARCHAR(32) NOT NULL                COMMENT '持有人账号',
+  friend     VARCHAR(32) NOT NULL                COMMENT '好友账号',
+  created_at DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '结交时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_friend_pair (owner, friend)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='好友关系表';
+
+-- 13.2) 好友申请（同一对人只保留一条，重复申请复用并改回 PENDING）
+CREATE TABLE IF NOT EXISTS friend_request (
+  id         BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  from_user  VARCHAR(32) NOT NULL                COMMENT '发起人账号',
+  to_user    VARCHAR(32) NOT NULL                COMMENT '接收人账号',
+  status     VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING 待处理 / ACCEPTED 已通过 / DECLINED 已拒绝',
+  created_at DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '发起时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_friend_req (from_user, to_user)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='好友申请表';
+
+-- 13.3) 站内聊天私信（is_read 供未读角标统计）
+CREATE TABLE IF NOT EXISTS chat_message (
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键（增量拉取游标）',
+  sender     VARCHAR(32)  NOT NULL                COMMENT '发送人账号',
+  receiver   VARCHAR(32)  NOT NULL                COMMENT '接收人账号',
+  content    VARCHAR(500) NOT NULL                COMMENT '消息内容',
+  is_read    TINYINT      NOT NULL DEFAULT 0      COMMENT '是否已读：1 已读 / 0 未读',
+  created_at DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+  PRIMARY KEY (id),
+  KEY idx_chat_pair (sender, receiver, id),
+  KEY idx_chat_unread (receiver, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='好友聊天私信表';
+
+-- 13.4) 好友对战（象棋/五子棋，自定义积分注；招法存 moves JSON 数组，客户端轮询同步）
+CREATE TABLE IF NOT EXISTS friend_battle (
+  id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  challenger  VARCHAR(32)  NOT NULL                COMMENT '发起人账号（执黑/执红，先行）',
+  opponent    VARCHAR(32)  NOT NULL                COMMENT '应战人账号',
+  game        VARCHAR(16)  NOT NULL                COMMENT '对局项目：CHESS 象棋 / GOMOKU 五子棋',
+  stake       INT          NOT NULL DEFAULT 0      COMMENT '自定义积分注（胜方净得 stake，负方扣除 stake）',
+  status      VARCHAR(16)  NOT NULL DEFAULT 'REQUESTED' COMMENT '状态：REQUESTED 待应战 / READY 对战中 / FINISHED 已结算 / CANCELLED 已取消',
+  winner      VARCHAR(32)  DEFAULT NULL            COMMENT '胜方账号（结算后回填）',
+  moves       LONGTEXT     DEFAULT NULL            COMMENT '招法 JSON 数组（如 ["7,7","7,8"]）',
+  created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '发起时间',
+  finished_at DATETIME     DEFAULT NULL            COMMENT '结算时间',
+  PRIMARY KEY (id),
+  KEY idx_battle_challenger (challenger, created_at),
+  KEY idx_battle_opponent (opponent, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='好友对战表（积分注账本）';

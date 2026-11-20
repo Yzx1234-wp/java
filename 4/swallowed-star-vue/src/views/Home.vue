@@ -233,14 +233,16 @@ const myPoints = ref(0)
 const clock = ref('')
 let timer = null
 
-/* ===== 导航栏（功法首页 + 人物介绍 + 秘境首页 + 任务接取 + 商店兑换 + 修炼境界 + 我的主页） ===== */
+/* ===== 导航栏（功法首页 + 人物介绍 + 秘境首页 + 任务接取 + 游戏乐园 + 商店兑换 + 修炼境界 + 我的主页） ===== */
 const navs = [
   { key: 'home', label: '功法首页' },
   { key: 'characters', label: '人物介绍' },
   { key: 'realms', label: '秘境首页' },
   { key: 'quests', label: '任务接取' },
+  { key: 'games', label: '游戏乐园' },
   { key: 'shop', label: '商店兑换' },
   { key: 'cultivation', label: '修炼境界' },
+  { key: 'friends', label: '好友' },
   { key: 'profile', label: '我的主页' }
 ]
 const activeNav = ref('home')
@@ -258,12 +260,20 @@ function onNav(item) {
     router.push('/quests')
     return
   }
+  if (item.key === 'games') {
+    router.push('/games')
+    return
+  }
   if (item.key === 'shop') {
     router.push('/shop')
     return
   }
   if (item.key === 'cultivation') {
     router.push('/cultivation')
+    return
+  }
+  if (item.key === 'friends') {
+    router.push('/friends')
     return
   }
   if (item.key === 'profile') {

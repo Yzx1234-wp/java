@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fenglin.springboottest.controller.dto.OptionVO;
 import com.fenglin.springboottest.entity.ShopItem;
 import com.fenglin.springboottest.entity.ShopOrder;
+import com.fenglin.springboottest.mapper.FriendBattleMapper;
 import com.fenglin.springboottest.mapper.QuestAcceptMapper;
 import com.fenglin.springboottest.mapper.RealmSignupMapper;
 import com.fenglin.springboottest.mapper.ShopItemMapper;
@@ -38,6 +39,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopItemMapper, ShopItem> imple
 
     @Autowired
     private RealmSignupMapper signupMapper;
+
+    @Autowired
+    private FriendBattleMapper battleMapper;
 
     @Override
     public List<ShopItem> search(String keyword, String category, String sortBy, String username) {
@@ -189,9 +193,10 @@ public class ShopServiceImpl extends ServiceImpl<ShopItemMapper, ShopItem> imple
 
     /* ===== 私有辅助 ===== */
 
-    /** 可用积分 = 累计发放 - 兑换消耗 */
+    /** 可用积分 = 累计发放 + 好友对战净得 - 兑换消耗 */
     private int availablePoints(String username) {
-        int earned = acceptMapper.sumPoints(username) + signupMapper.sumPoints(username);
+        int earned = acceptMapper.sumPoints(username) + signupMapper.sumPoints(username)
+                + battleMapper.netDelta(username);
         return Math.max(0, earned - orderMapper.sumSpent(username));
     }
 

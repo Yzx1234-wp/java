@@ -15,8 +15,10 @@
       <button class="nav-item" @click="goCharacters">人物介绍</button>
       <button class="nav-item" @click="goRealms">秘境首页</button>
       <button class="nav-item" @click="goQuests">任务接取</button>
+      <button class="nav-item" @click="goGames">游戏乐园</button>
       <button class="nav-item active">商店兑换</button>
       <button class="nav-item" @click="goCultivation">修炼境界</button>
+      <button class="nav-item" @click="goFriends">好友</button>
       <button class="nav-item" @click="goProfile">我的主页</button>
     </div>
 
@@ -503,7 +505,9 @@ const goHome = () => router.push('/home')
 const goCharacters = () => router.push('/characters')
 const goRealms = () => router.push('/realms')
 const goQuests = () => router.push('/quests')
+const goGames = () => router.push('/games')
 const goCultivation = () => router.push('/cultivation')
+const goFriends = () => router.push('/friends')
 const goProfile = () => router.push('/profile')
 const goLogout = () => { logout(); router.push('/login') }
 </script>
